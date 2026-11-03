@@ -1,0 +1,39 @@
+# Environment variables and local secrets
+.env
+.env.*
+!.env.example
+
+# Python (if used)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Notebooks (if used)
+.ipynb_checkpoints/
+
+# JavaScript (if used)
+node_modules/
+dist/
+build/
+coverage/
+
+# Local outputs and private data
+outputs/
+reports/
+data/private/
+samples/private/
+
+# Editor and OS artifacts
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+*.log
