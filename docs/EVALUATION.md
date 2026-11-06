@@ -55,12 +55,34 @@ java '-Djava.awt.headless=true' -cp out imageproof.EvaluateDataset samples/gener
 ```
 
 Actual preparation results: generation produced nine inputs and SHA256SUMS;
-DatasetTest passed 9,257 checks on JDK 24.0.2 with Java 17 compilation target.
+DatasetTest now passes 9,292 checks on both JDK 24.0.2 and the actual Temurin
+17.0.21+9 runtime, with Java 17 compilation target and no compilation warnings.
+The Java 17 regeneration matches the committed baseline byte-for-byte, including
+JPEG, PNGs and text files; no baseline changes were necessary.
 The test generates twice into fresh temporary directories, compares both
 generations and committed files byte-for-byte (including manifest), checks
 dimensions/decoding, crop content, identical pixels, shuffle multiset and changed
 positions, exactly 64 localized changes, and ImageIO returning null for the text
-file. The temporary test directories are removed by the test.
+file. Additional checks independently hash each committed file against its
+manifest entry, verify actual file formats, check fixed brightness/contrast RGB
+fixtures (including saturation) and check localized patch boundaries. The
+temporary test directories are removed by the test.
+
+The portable Java 17 JRE was obtained from Eclipse Adoptium, kept outside the
+repository, and verified against the release API's SHA-256 checksum:
+
+```text
+OpenJDK17U-jre_x64_windows_hotspot_17.0.21_9.zip
+fe4656bd78fb09812dc38c49da777f79cc33e7ee435a254be82f9e7f40d9d117
+openjdk version "17.0.21" / Temurin-17.0.21+9
+```
+
+The installed Java and PATH were unchanged. Actual Java 17 invocation:
+
+```powershell
+& "$env:TEMP\imageproof-jre17\jdk-17.0.21+9-jre\bin\java.exe" '-Djava.awt.headless=true' -cp out imageproof.DatasetTest
+& "$env:TEMP\imageproof-jre17\jdk-17.0.21+9-jre\bin\java.exe" '-Djava.awt.headless=true' -cp out imageproof.EvaluateDataset samples/generated
+```
 
 The final command actually executed and reported:
 
@@ -68,8 +90,11 @@ The final command actually executed and reported:
 BLOCKED: real Histogram and Comparison implementations required; no scores produced.
 ```
 
-Its intended exit status is 2 (PowerShell/native tool wrappers may report 1).
-No results CSV is committed because no scores have been measured.
+Its actual native exit status was 2, with zero bytes on stdout. No results CSV
+is committed because no scores have been measured. Dependencies were rechecked
+on 2026-11-06: main and all remote branches still lack Histogram/Comparison/App.
+The adapter now also rejects a nonfinite reverse score before testing symmetry;
+that dependent execution path remains unverified until real math is available.
 
 ## Measured score table and expectations
 

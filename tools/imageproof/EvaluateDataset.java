@@ -32,7 +32,8 @@ public final class EvaluateDataset {
             if (!Double.isFinite(score) || score < -1e-9 || score > 1 + 1e-9)
                 throw new AssertionError("Invalid distance: " + name);
             double reverse = ((Number) difference.invoke(null, values, reference)).doubleValue();
-            if (Math.abs(score - reverse) > 1e-9) throw new AssertionError("Asymmetric distance");
+            if (!Double.isFinite(reverse) || Math.abs(score - reverse) > 1e-9)
+                throw new AssertionError("Invalid or asymmetric reverse distance");
             if ((name.equals("identical.png") || name.equals("shuffled.png")) && Math.abs(score) > 1e-12)
                 throw new AssertionError("Expected zero for " + name);
             if (name.equals("shuffled.png") && !Arrays.equals(reference, values))
