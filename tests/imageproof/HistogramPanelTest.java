@@ -69,6 +69,31 @@ public final class HistogramPanelTest {
             for (int bin = 0; bin < 256; bin++) {
                 double[] single = new double[256]; single[bin] = 1; p.setValues(single);
                 check(bars(render(p, 90, 150)) > 0);
+                BufferedImage full = render(p, 574, 302);
+                check(full.getRGB(48 + 2 * bin, 56) == HistogramPanel.BAR.getRGB());
+                check(bars(full) == 400);
+            }
+            // Common scale must preserve equal frequencies even with different peaks.
+            double[] a = new double[256], b = new double[256];
+            a[10] = .25; a[20] = .75;
+            b[10] = .25; b[30] = .25; b[40] = .5;
+            p.setValues(a); q.setValues(b);
+            p.setMaximumFrequency(1); q.setMaximumFrequency(1);
+            BufferedImage first = render(p, 574, 302), second = render(q, 574, 302);
+            for (int y = 56; y < 256; y++)
+                check(first.getRGB(68, y) == second.getRGB(68, y));
+            p.setMaximumFrequency(Double.MIN_VALUE);
+            check(bars(render(p, 574, 302)) == 800); // Safe clipping, even for tiny scale.
+            p.setValues(null); check(bars(render(p, 574, 302)) == 0);
+            p.setValues(a); p.setValues(new double[256]);
+            check(bars(render(p, 574, 302)) == 0); // Zero replacement removes old bars.
+            p.setMaximumFrequency(1);
+            p.setValues(a);
+            p.setBorder(javax.swing.BorderFactory.createEmptyBorder(7, 11, 13, 17));
+            BufferedImage inset = render(p, 574, 302);
+            for (int y = 0; y < 302; y++) for (int x = 0; x < 574; x++) {
+                if (inset.getRGB(x, y) == HistogramPanel.BAR.getRGB())
+                    check(x >= 11 && x < 557 && y >= 7 && y < 289);
             }
         });
         System.out.println("HistogramPanelTest: " + checks + " checks passed");
