@@ -83,6 +83,8 @@ mvn package                           # builds target/simple-image-proof-0.1.0.j
 java -jar target/simple-image-proof-0.1.0.jar
 ```
 
+Or just run `./launcher.sh` (macOS/Linux) or `launcher.bat` (Windows); it builds the jar if needed and starts the app. On Windows, delete `target` to force a rebuild after code changes.
+
 Usage: press **Load reference…** and **Load comparison…**, choose two images (PNG/JPG/GIF/BMP, sizes may differ), then press **Compare**. Changing either image clears the previous result. Unreadable or non-image files show an error and keep the current inputs.
 
 Tested so far: `Comparison` (identical = 0, disjoint = 1, hand-calculated 0.5, symmetry, invalid inputs) and basic histogram normalization. The Swing workflow still needs recorded manual end-to-end testing.
