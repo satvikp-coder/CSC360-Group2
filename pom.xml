@@ -16,19 +16,48 @@
     <!-- Keep the team's existing layout: src/imageproof, tests/imageproof -->
     <sourceDirectory>src</sourceDirectory>
     <plugins>
-      <!-- Tests are plain main() programs (no test library); run them at `mvn test`. -->
+      <!-- Tests are plain main() programs (no test library); run them at `mvn test`. They read
+           samples/ relative to the repo root, so run Maven from there. Demo/DesktopCheck classes
+           are compiled but not executed (they need a display). -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.5.0</version>
         <executions>
           <execution>
-            <id>core-tests</id>
+            <id>comparisontest</id>
             <phase>test</phase>
             <goals><goal>java</goal></goals>
             <configuration>
               <mainClass>imageproof.ComparisonTest</mainClass>
               <classpathScope>test</classpathScope>
+              <systemProperties>
+                <systemProperty><key>java.awt.headless</key><value>true</value></systemProperty>
+              </systemProperties>
+            </configuration>
+          </execution>
+          <execution>
+            <id>histogrampaneltest</id>
+            <phase>test</phase>
+            <goals><goal>java</goal></goals>
+            <configuration>
+              <mainClass>imageproof.HistogramPanelTest</mainClass>
+              <classpathScope>test</classpathScope>
+              <systemProperties>
+                <systemProperty><key>java.awt.headless</key><value>true</value></systemProperty>
+              </systemProperties>
+            </configuration>
+          </execution>
+          <execution>
+            <id>datasettest</id>
+            <phase>test</phase>
+            <goals><goal>java</goal></goals>
+            <configuration>
+              <mainClass>imageproof.DatasetTest</mainClass>
+              <classpathScope>test</classpathScope>
+              <systemProperties>
+                <systemProperty><key>java.awt.headless</key><value>true</value></systemProperty>
+              </systemProperties>
             </configuration>
           </execution>
         </executions>
@@ -42,7 +71,7 @@
             <id>add-tests</id>
             <phase>generate-test-sources</phase>
             <goals><goal>add-test-source</goal></goals>
-            <configuration><sources><source>tests</source></sources></configuration>
+            <configuration><sources><source>tests</source><source>tools</source></sources></configuration>
           </execution>
         </executions>
       </plugin>
