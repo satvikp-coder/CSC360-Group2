@@ -27,6 +27,11 @@ public final class App {
     /** Incremented per selection / input change so slow background results can be recognised as stale. */
     private final int[] loadTickets = new int[2];
     private int resultTicket;
+    // Status is derived from this state (never from saved label text), so it cannot go stale.
+    private int loading;            // loads in progress
+    private boolean comparing;      // comparison in progress
+    private Double score;           // score currently shown, null if none
+    private boolean inputsChanged;  // an input was replaced since the last result
 
     private App() {
         JPanel top = new JPanel(new GridLayout(1, 3, 8, 8));
@@ -80,8 +85,8 @@ public final class App {
         File f = fc.getSelectedFile();
         lastDir = f.getParentFile();
         int ticket = ++loadTickets[slot]; // a later choice for this slot makes this result stale
-        String before = result.getText(); // restored if loading fails, since the old inputs stay valid
-        status("Loading " + f.getName() + "…");
+        loading++;
+        refreshStatus();
         new SwingWorker<Loaded, Void>() {
             @Override protected Loaded doInBackground() throws IOException {
                 BufferedImage img = ImageIO.read(f);
@@ -89,7 +94,8 @@ public final class App {
             }
 
             @Override protected void done() {
-                if (ticket != loadTickets[slot]) return; // stale: superseded by a newer selection
+                loading--;
+                if (ticket != loadTickets[slot]) { refreshStatus(); return; } // stale: superseded by a newer selection
                 try {
                     Loaded l = get();
                     if (l == null) { error("\"" + f.getName() + "\" is not a supported image (try PNG, JPG, GIF or BMP)."); }
@@ -99,7 +105,7 @@ public final class App {
                         previews[slot].setIcon(new ImageIcon(l.thumb()));
                         previews[slot].setToolTipText(f.getName() + " — " + l.image().getWidth() + "×" + l.image().getHeight());
                         invalidateResult(); // old score/plots no longer match the inputs
-                        return;
+                        return; // invalidateResult refreshes the status
                     }
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
@@ -107,19 +113,29 @@ public final class App {
                     Throwable c = ex.getCause() == null ? ex : ex.getCause();
                     error("Could not read \"" + f.getName() + "\": " + c.getMessage());
                 }
-                status(before);
+                refreshStatus(); // a failed load leaves inputs, and so the current result, unchanged
             }
         }.execute();
     }
 
-    private void status(String text) { result.setText(text); }
+    /** Sets the status line from current state only. */
+    private void refreshStatus() {
+        if (loading > 0) result.setText("Loading…");
+        else if (comparing) result.setText("Comparing…");
+        else if (score != null) result.setText(String.format("Histogram difference: %.4f", score));
+        else if (inputsChanged) result.setText("Inputs changed — press Compare.");
+        else result.setText("Choose both images, then press Compare.");
+    }
 
     /** Clears both plots and the score because the inputs no longer match them. */
     private void invalidateResult() {
         resultTicket++; // discards any comparison still running
+        comparing = false;
+        score = null;
+        inputsChanged = true;
         for (HistogramPanel p : panels) p.clearData();
-        result.setText("Inputs changed — press Compare.");
         compare.setEnabled(images[0] != null && images[1] != null);
+        refreshStatus();
     }
 
     /** Computes both normalized histograms and their distance on a background thread, then displays them. */
@@ -127,7 +143,8 @@ public final class App {
         BufferedImage ref = images[0], cmp = images[1];
         int ticket = ++resultTicket;
         compare.setEnabled(false);
-        status("Comparing…");
+        comparing = true;
+        refreshStatus();
         new SwingWorker<double[][], Void>() {
             @Override protected double[][] doInBackground() {
                 return new double[][] {Histogram.normalize(Histogram.compute(ref)), Histogram.normalize(Histogram.compute(cmp))};
@@ -137,16 +154,19 @@ public final class App {
                 if (ticket != resultTicket) return; // inputs changed while computing: do not show a stale score
                 try {
                     double[][] h = get();
-                    double score = Comparison.difference(h[0], h[1]);
+                    score = Comparison.difference(h[0], h[1]);
+                    inputsChanged = false;
                     panels[0].setValues(h[0]);
                     panels[1].setValues(h[1]);
-                    result.setText(String.format("Histogram difference: %.4f", score));
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException | RuntimeException ex) {
-                    result.setText("Comparison failed: " + (ex.getCause() == null ? ex : ex.getCause()).getMessage());
+                    JOptionPane.showMessageDialog(frame, "Comparison failed: " + (ex.getCause() == null ? ex : ex.getCause()).getMessage(),
+                            "Cannot compare", JOptionPane.ERROR_MESSAGE);
                 }
+                comparing = false;
                 compare.setEnabled(true);
+                refreshStatus();
             }
         }.execute();
     }
