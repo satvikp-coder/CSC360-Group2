@@ -19,6 +19,8 @@ htmlcov/
 .ipynb_checkpoints/
 
 # JavaScript (if used)
+out/
+*.class
 node_modules/
 dist/
 build/
