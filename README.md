@@ -12,6 +12,10 @@ This is an **educational image-comparison tool**, not a forensic authentication 
 
 **Current status:** Project planning and documentation. The image-analysis application has **not been implemented yet**.
 
+Issue #4 adds a standalone Swing histogram panel and dependency-free headless
+tests. See [panel setup and integration contract](docs/HISTOGRAM_PANEL.md) for
+Java 17 build commands and verification status. The full application is pending.
+
 ## Project objectives
 
 - Read a reference image and a comparison image.
