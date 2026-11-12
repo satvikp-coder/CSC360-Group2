@@ -23,11 +23,20 @@
         <version>3.5.0</version>
         <executions>
           <execution>
-            <id>core-tests</id>
+            <id>comparisontest</id>
             <phase>test</phase>
             <goals><goal>java</goal></goals>
             <configuration>
               <mainClass>imageproof.ComparisonTest</mainClass>
+              <classpathScope>test</classpathScope>
+            </configuration>
+          </execution>
+          <execution>
+            <id>histogramtest</id>
+            <phase>test</phase>
+            <goals><goal>java</goal></goals>
+            <configuration>
+              <mainClass>imageproof.HistogramTest</mainClass>
               <classpathScope>test</classpathScope>
             </configuration>
           </execution>
