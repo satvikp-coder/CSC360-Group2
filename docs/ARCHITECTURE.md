@@ -1,8 +1,8 @@
 # Simple-Image-Proof — Architecture
 
-**CSC360 · Group 2** · Minimal version: two images, one grayscale histogram each, one difference score.
+**CSC360 · Group 2** · Minimal version: two images, one grayscale histogram each, one difference score (no verdict until a threshold is validated).
 
-> One-line idea: count how many pixels have each brightness (0–255) in both images, compare the counts, and report *similar* or *different*.
+> One-line idea: count how many pixels have each brightness (0–255) in both images, compare the counts, and report how different the brightness distributions are.
 
 ---
 
@@ -15,9 +15,7 @@ flowchart LR
     C --> D[Count pixels per gray value<br/>256 bins]
     D --> E[Normalize<br/>count ÷ total pixels]
     E --> F[Difference score<br/>0.5 × Σ abs p−q]
-    F --> G{score > threshold T?}
-    G -- yes --> H[LIKELY EDITED]
-    G -- no --> I[LIKELY UNEDITED]
+    F --> G[Show score + caveat<br/>wording pending threshold study #6]
 ```
 
 The same steps run on **both** images. Only the last two boxes look at both together.
@@ -53,7 +51,7 @@ difference = 0.5 × Σ |p[i] − q[i]|      for i = 0 … 255
 - Add all gaps, then halve → result always between **0** (identical histograms) and **1** (no overlap at all).
 - Name of this measure: **total variation distance**.
 
-**Verdict rule:** `difference > T` → "Likely edited". `T` is picked from our test results (section 7), not guessed.
+**No verdict yet:** the app shows only the score and a caveat. A threshold `T` (and any wording such as "brightness distribution changed") may be added only after it is chosen from our test results (section 7, issue #6). The score is never presented as proof of editing or forgery.
 
 ---
 
@@ -77,9 +75,7 @@ classDiagram
         +normalize(int[] counts)$ double[]
     }
     class Comparison {
-        +THRESHOLD$ double
         +difference(double[] p, double[] q)$ double
-        +isEdited(double score)$ boolean
     }
     class HistogramPanel {
         -double[] values
@@ -94,7 +90,7 @@ classDiagram
 | Class | Job (one sentence) | Knows about Swing? |
 |---|---|---|
 | `Histogram` | Turns an image into a normalized 256-value array. | No |
-| `Comparison` | Turns two arrays into a score and a yes/no verdict. | No |
+| `Comparison` | Turns two arrays into a score in [0, 1]. No threshold or verdict. | No |
 | `HistogramPanel` | Draws one array as bars on screen. | Yes |
 | `App` | Window, buttons, file loading; connects everything. | Yes |
 
@@ -123,11 +119,9 @@ sequenceDiagram
     Histogram-->>App: double[256] q
     App->>Comparison: difference(p, q)
     Comparison-->>App: score
-    App->>Comparison: isEdited(score)
-    Comparison-->>App: true / false
     App->>Panels: setValues(p), setValues(q)
     Panels-->>User: bars redrawn
-    App-->>User: "Difference: 0.27 → LIKELY EDITED"
+    App-->>User: "Histogram difference: 0.2700" + caveat
 ```
 
 ---
@@ -178,7 +172,7 @@ flowchart LR
     X --> Z3[JPEG / resize change bars slightly → possible false alarm]
 ```
 
-So the verdict means *"brightness distribution changed"*, not *"proof of forgery"*.
+So a high score means *"brightness distribution changed"*, not *"proof of forgery"*; a low score does not prove an image is unedited.
 
 ---
 
@@ -189,7 +183,7 @@ CSC360-Group2/
 ├── src/imageproof/
 │   ├── App.java             window + buttons + glue
 │   ├── Histogram.java       gray, count, normalize
-│   ├── Comparison.java      score + verdict
+│   ├── Comparison.java      total variation score (no verdict)
 │   └── HistogramPanel.java  draws bars
 ├── samples/                 test images (original + edited copies)
 └── docs/
@@ -201,7 +195,7 @@ CSC360-Group2/
 Build & run (plain JDK 17, no libraries):
 
 ```bash
-javac -d out src/imageproof/*.java
+mvn package   # or: javac -d out src/imageproof/*.java
 ```
 
 ```bash
