@@ -2,7 +2,7 @@ package imageproof;
 
 import java.awt.image.BufferedImage;
 
-/** PLACEHOLDER matching docs/ARCHITECTURE.md so App compiles; superseded by issue #1. */
+/** Encoded intensity statistics; transparency is composited onto white. */
 public final class Histogram {
     private Histogram() {}
 
@@ -11,17 +11,73 @@ public final class Histogram {
     }
 
     public static int[] compute(BufferedImage img) {
-        int[] counts = new int[256];
-        for (int y = 0; y < img.getHeight(); y++)
-            for (int x = 0; x < img.getWidth(); x++) counts[toGray(img.getRGB(x, y))]++;
-        return counts;
+        return counts(grayPixels(img));
     }
 
     public static double[] normalize(int[] counts) {
+        if (counts == null || counts.length != 256) throw new IllegalArgumentException("Expected 256 bins");
         long total = 0;
-        for (int c : counts) total += c;
+        for (int c : counts) {
+            if (c < 0) throw new IllegalArgumentException("Negative count");
+            total += c;
+        }
+        if (total == 0) throw new IllegalArgumentException("Histogram must contain pixels");
         double[] p = new double[counts.length];
         for (int i = 0; i < p.length; i++) p[i] = (double) counts[i] / total;
         return p;
+    }
+
+    /** Round weighted RGB; explicit gray raster samples retain their encoded intensity. */
+    public static int[] grayPixels(BufferedImage image) {
+        if (image == null) throw new IllegalArgumentException("Image is required");
+        int width = image.getWidth(), height = image.getHeight();
+        if ((long) width * height > ImageAnalyzer.MAX_PIXELS)
+            throw new IllegalArgumentException("Image exceeds the 16 megapixel limit");
+        int[] gray = new int[width * height];
+        boolean plainGray = image.getColorModel().getColorSpace().getType() == java.awt.color.ColorSpace.TYPE_GRAY
+                && !image.getColorModel().hasAlpha() && image.getRaster().getNumBands() == 1;
+        int[] row = new int[width];
+        for (int y = 0; y < height; y++) {
+            ImageAnalyzer.checkCancelled();
+            if (plainGray) {
+                int bits = image.getSampleModel().getSampleSize(0);
+                if (bits != 8 && bits != 16) throw new IllegalArgumentException("Use 8/16-bit grayscale");
+                int maximum = bits == 16 ? 65535 : 255;
+                image.getRaster().getSamples(0, y, width, 1, 0, row);
+                for (int x = 0; x < width; x++) gray[y * width + x] = (row[x] * 255 + maximum / 2) / maximum;
+            } else {
+                image.getRGB(0, y, width, 1, row, 0, width);
+                for (int x = 0; x < width; x++) {
+                    int rgb = row[x], alpha = rgb >>> 24;
+                    int r = composite((rgb >>> 16) & 255, alpha), g = composite((rgb >>> 8) & 255, alpha);
+                    int b = composite(rgb & 255, alpha);
+                    gray[y * width + x] = toGray((r << 16) | (g << 8) | b);
+                }
+            }
+        }
+        return gray;
+    }
+
+    private static int composite(int value, int alpha) {
+        return (value * alpha + 255 * (255 - alpha) + 127) / 255;
+    }
+
+    static int[] counts(int[] gray) {
+        int[] counts = new int[256];
+        for (int value : gray) counts[value]++;
+        return counts;
+    }
+
+    public record Statistics(double mean, double standardDeviation, double entropy) {}
+
+    public static Statistics statistics(double[] histogram) {
+        Comparison.difference(histogram, histogram);
+        double mean = 0, variance = 0, entropy = 0;
+        for (int i = 0; i < 256; i++) mean += i * histogram[i];
+        for (int i = 0; i < 256; i++) {
+            variance += (i - mean) * (i - mean) * histogram[i];
+            if (histogram[i] > 0) entropy -= histogram[i] * Math.log(histogram[i]) / Math.log(2);
+        }
+        return new Statistics(mean, Math.sqrt(variance), entropy);
     }
 }
