@@ -1,0 +1,1 @@
+Deliberately unsupported image input. CSC360 Group 2 synthetic dataset.
