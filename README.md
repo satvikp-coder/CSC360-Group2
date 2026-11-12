@@ -10,7 +10,7 @@ Simple-Image-Proof is a student project exploring a basic way to **compare image
 
 This is an **educational image-comparison tool**, not a forensic authentication system. A different histogram can suggest that an image has changed, but it cannot establish *why* it changed or prove deliberate manipulation. An edit can also leave the histogram almost unchanged.
 
-**Current status:** Project planning and documentation. The image-analysis application has **not been implemented yet**.
+**Current status:** Early implementation. `Comparison` (total variation distance), a first Swing `App`, `HistogramPanel`, a reproducible sample dataset and a Maven build exist. `Histogram` is currently a placeholder pending issue #1. No detection threshold has been validated, and the app shows only a score with a caveat. See [manual test plan](docs/MANUAL_TEST.md).
 
 Issue #5 adds reproducible synthetic sample images, a Java 17 dataset generator
 and dependency-free tests. See [evaluation and reproduction commands](docs/EVALUATION.md).
@@ -71,9 +71,9 @@ When implemented, the project should show:
 | Stage | Goal | Status |
 | --- | --- | --- |
 | 1 | Define the method, scope, and test plan | In planning |
-| 2 | Implement image loading and histogram generation | Not started |
-| 3 | Add histogram comparison and visual results | Not started |
-| 4 | Test original vs. edited examples | Not started |
+| 2 | Implement image loading and histogram generation | In progress (placeholder Histogram) |
+| 3 | Add histogram comparison and visual results | In progress (PRs open) |
+| 4 | Test original vs. edited examples | Dataset ready; preliminary scores in docs/MANUAL_TEST.md |
 | 5 | Document findings and prepare demonstration | Not started |
 
 See [Project Plan](docs/PROJECT_PLAN.md) for the proposed scope, acceptance criteria, and test cases.

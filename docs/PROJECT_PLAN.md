@@ -79,10 +79,16 @@ Use images that the group created or is permitted to use, and do not commit priv
 
 Agree on responsibilities and a working timeline together. Prefer small pull requests, clear commit messages, and review before merging changes into `main`.
 
+## Decisions made
+
+- Language/build: Java 17, Swing, Maven (`pom.xml`), no third-party libraries; sources in `src/`, tests in `tests/`, dataset tooling in `tools/`.
+- Interface: Swing GUI (`App`), launched with `launcher.sh` / `launcher.bat`.
+- Metric: grayscale histograms, total variation distance (`Comparison`). No threshold or verdict in the app yet.
+- Tests: plain `main()` programs run by `mvn test`; no test framework.
+- Evaluation data: synthetic, generated and hashed in `samples/generated/`.
+
 ## Open decisions
 
-- Implementation language and dependencies.
-- CLI vs. GUI vs. notebook interface.
 - Grayscale only vs. grayscale plus RGB.
-- Evaluation dataset and any comparison threshold.
+- Any comparison threshold and result wording (issue #6).
 - Final submission format and course deadline.
