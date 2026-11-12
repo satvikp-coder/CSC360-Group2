@@ -80,7 +80,19 @@ See [Project Plan](docs/PROJECT_PLAN.md) for the proposed scope, acceptance crit
 
 ## Technology and setup
 
-The implementation language, libraries, and interface will be confirmed by the group. Installation and run commands will be added **once working code is available**.
+Java 17+ with Swing and Maven. **No third-party libraries.** Sources live in `src/imageproof/`, tests in `tests/imageproof/`.
+
+```bash
+mvn test                              # runs ComparisonTest and HistogramTest
+mvn package                           # builds target/simple-image-proof-0.1.0.jar
+java -jar target/simple-image-proof-0.1.0.jar
+```
+
+Or just run `./launcher.sh` (macOS/Linux) or `launcher.bat` (Windows); it builds the jar if needed and starts the app. On Windows, delete `target` to force a rebuild after code changes.
+
+Usage: press **Load reference…** and **Load comparison…**, choose two images (PNG/JPG/GIF/BMP, sizes may differ), then press **Compare**. Changing either image clears the previous result. Unreadable or non-image files show an error and keep the current inputs.
+
+Tested so far: `Comparison` (identical = 0, disjoint = 1, hand-calculated 0.5, symmetry, invalid inputs) and basic histogram normalization. The Swing workflow still needs recorded manual end-to-end testing.
 
 ## Team
 
