@@ -60,6 +60,15 @@
               </systemProperties>
             </configuration>
           </execution>
+          <execution>
+            <id>histogramtest</id>
+            <phase>test</phase>
+            <goals><goal>java</goal></goals>
+            <configuration>
+              <mainClass>imageproof.HistogramTest</mainClass>
+              <classpathScope>test</classpathScope>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
       <plugin>
