@@ -12,6 +12,7 @@ public final class HistogramPanel extends JPanel {
     private double[] values;
     private double maximumFrequency = 1.0;
 
+    /** Creates an empty plot with the given title; null uses "Histogram". */
     public HistogramPanel(String title) {
         this.title = title == null ? "Histogram" : title;
         setBackground(Color.WHITE);
@@ -41,6 +42,7 @@ public final class HistogramPanel extends JPanel {
         repaint();
     }
 
+    /** Clears the plotted values and schedules a repaint, retaining the frequency scale. */
     public void clearData() {
         values = null;
         repaint();

@@ -1,6 +1,7 @@
 # Histogram panel contract and verification
 
-Related issue: #4. Standalone implementation; integration awaits #1 and #3.
+Related issue: #4. The standalone panel was merged in PR #9; application
+integration and end-to-end verification continue in #3 / PR #12.
 
 Construct `new HistogramPanel("Original image")` and a second panel titled
 `"Comparison image"` on the Swing event dispatch thread. Call `setValues(p)` and
@@ -28,11 +29,11 @@ respected. Use adequate layout space for fully readable labels.
 From repository root (Java 17 or later; no libraries):
 
 ```powershell
-javac --release 17 -Xlint:all -d out src/imageproof/HistogramPanel.java tests/imageproof/*.java
+javac --release 17 -Xlint:all -d out src/imageproof/HistogramPanel.java tests/imageproof/HistogramPanelTest.java tests/imageproof/HistogramPanelDemo.java tests/imageproof/HistogramPanelDesktopCheck.java
 java '-Djava.awt.headless=true' -cp out imageproof.HistogramPanelTest
 ```
 
-Actual current result: 1,356 checks passed on both JDK 24.0.2 and the actual
+Recorded standalone result: 1,356 checks passed on both JDK 24.0.2 and the actual
 Temurin 17.0.21+9 runtime, compiled with `javac --release 17 -Xlint:all` on JDK 24.
 Covers empty/null/zero/invalid input, defensive copy, every bin's full-width
 position and narrow visibility, shared scales with different distributions,
@@ -52,6 +53,14 @@ To reproduce with a portable runtime, replace `java` above with its full path:
 ```powershell
 & "$env:TEMP\imageproof-jre17\jdk-17.0.21+9-jre\bin\java.exe" '-Djava.awt.headless=true' -cp out imageproof.HistogramPanelTest
 ```
+
+The explicit source list builds only the panel and its three verification
+programs; it does not pull in dataset or application tests with other dependencies.
+`HistogramPanelTest` is the automated headless check. `HistogramPanelDemo` and
+`HistogramPanelDesktopCheck` are manual desktop tools: compiling them through
+Maven's test source directory does not run them, and `mvn test` is not evidence
+of a visual pass. Run the commands below on a graphical desktop and inspect
+the output separately.
 
 ## Desktop visual verification
 
@@ -91,4 +100,5 @@ clip text as documented above. The harness is not the missing application.
 - Titles, frequency explanation, safe invalid-input painting: implemented and tested.
 - Normal/small/narrow desktop captures and cleared state: visually inspected by Codex; evidence above.
 - Real two-image workflow: blocked on Histogram/App (#1/#3).
-- Issue remains open; merge requires teammate approval and completed verification.
+- Varun approved and merged the standalone panel in PR #9 on 2026-11-12.
+- Issue #4 is closed; application integration and end-to-end verification continue in #3 / PR #12.
