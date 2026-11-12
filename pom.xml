@@ -23,6 +23,12 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.5.0</version>
+        <configuration>
+          <systemProperties>
+            <systemProperty><key>imageproof.basedir</key><value>${project.basedir}</value></systemProperty>
+            <systemProperty><key>java.awt.headless</key><value>true</value></systemProperty>
+          </systemProperties>
+        </configuration>
         <executions>
           <execution>
             <id>comparisontest</id>
@@ -68,6 +74,14 @@
               <mainClass>imageproof.HistogramTest</mainClass>
               <classpathScope>test</classpathScope>
             </configuration>
+          </execution>
+          <execution>
+            <id>analyzertest</id><phase>test</phase><goals><goal>java</goal></goals>
+            <configuration><mainClass>imageproof.AnalyzerTest</mainClass><classpathScope>test</classpathScope></configuration>
+          </execution>
+          <execution>
+            <id>imagepaneltest</id><phase>test</phase><goals><goal>java</goal></goals>
+            <configuration><mainClass>imageproof.ImagePanelTest</mainClass><classpathScope>test</classpathScope></configuration>
           </execution>
         </executions>
       </plugin>

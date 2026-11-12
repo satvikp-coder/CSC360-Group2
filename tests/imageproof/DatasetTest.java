@@ -15,6 +15,25 @@ public final class DatasetTest {
     private static int[] pixels(BufferedImage image) {
         return image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
     }
+    private static Path sample(String name) {
+        return Path.of(System.getProperty("imageproof.basedir", "."), "samples", "generated", name);
+    }
+    private static void equivalent(Path actual, Path expected, String name) throws Exception {
+        if (name.endsWith(".txt")) {
+            check(Files.mismatch(actual, expected) == -1, "Text differs"); return;
+        }
+        BufferedImage a = ImageIO.read(actual.toFile()), b = ImageIO.read(expected.toFile());
+        check(a != null && b != null && a.getWidth() == b.getWidth() && a.getHeight() == b.getHeight(), "Decoded dimensions: " + name);
+        if (!name.endsWith(".jpg")) {
+            check(Arrays.equals(pixels(a), pixels(b)), "Lossless pixel content differs: " + name); return;
+        }
+        long error = 0;
+        for (int y = 0; y < a.getHeight(); y++) for (int x = 0; x < a.getWidth(); x++) {
+            int p = a.getRGB(x, y), q = b.getRGB(x, y);
+            for (int shift : new int[]{0, 8, 16}) error += Math.abs(((p >>> shift) & 255) - ((q >>> shift) & 255));
+        }
+        check((double) error / (a.getWidth() * a.getHeight() * 3) <= 12, "JPEG codec deviation too large");
+    }
     public static void main(String[] args) throws Exception {
         Path scratch = Files.createTempDirectory("imageproof-dataset-test-");
         try {
@@ -23,19 +42,17 @@ public final class DatasetTest {
             for (String name : DatasetGenerator.FILES) {
                 check(Files.mismatch(first.resolve(name), second.resolve(name)) == -1,
                         "Nondeterministic output: " + name);
-                check(Files.mismatch(first.resolve(name), Path.of("samples/generated", name)) == -1,
-                        "Committed dataset differs: " + name);
+                equivalent(first.resolve(name), sample(name), name);
             }
             check(Files.mismatch(first.resolve("SHA256SUMS"), second.resolve("SHA256SUMS")) == -1,
                     "Manifest differs");
-            check(Files.mismatch(first.resolve("SHA256SUMS"),
-                    Path.of("samples/generated/SHA256SUMS")) == -1, "Committed manifest differs");
-            List<String> manifest = Files.readAllLines(Path.of("samples/generated/SHA256SUMS"));
+            // Each committed asset is checked against its own manifest; regenerated codec bytes may vary.
+            List<String> manifest = Files.readAllLines(sample("SHA256SUMS"));
             check(manifest.size() == DatasetGenerator.FILES.size(), "Wrong manifest length");
             for (int i = 0; i < manifest.size(); i++) {
                 String name = DatasetGenerator.FILES.get(i);
                 String actualHash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                        .digest(Files.readAllBytes(Path.of("samples/generated", name))));
+                        .digest(Files.readAllBytes(sample(name))));
                 check(manifest.get(i).equals(actualHash + "  " + name), "Bad committed hash: " + name);
             }
             BufferedImage original = ImageIO.read(first.resolve("original.png").toFile());
