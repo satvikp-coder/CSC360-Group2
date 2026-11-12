@@ -17,6 +17,10 @@ and dependency-free tests. See [evaluation and reproduction commands](docs/EVALU
 Measured scores remain blocked until the histogram and comparison components
 are available; no classification threshold has been validated.
 
+Issue #4 adds a standalone Swing histogram panel and dependency-free headless
+tests. See [panel setup and integration contract](docs/HISTOGRAM_PANEL.md) for
+Java 17 build commands and verification status. The full application is pending.
+
 ## Project objectives
 
 - Read a reference image and a comparison image.
