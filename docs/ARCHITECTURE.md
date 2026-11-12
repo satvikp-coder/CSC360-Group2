@@ -195,9 +195,11 @@ CSC360-Group2/
 Build & run (plain JDK 17, no libraries):
 
 ```bash
-mvn package   # or: javac -d out src/imageproof/*.java
+javac -d out src/imageproof/*.java
 ```
 
 ```bash
 java -cp out imageproof.App
 ```
+
+A Maven build (`mvn package`, `launcher.sh` / `launcher.bat`) is added by PR #11; the plain `javac` commands above work without it.
