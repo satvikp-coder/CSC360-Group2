@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>imageproof</groupId>
+  <artifactId>simple-image-proof</artifactId>
+  <version>0.1.0</version>
+  <packaging>jar</packaging>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <build>
+    <!-- Keep the team's existing layout: src/imageproof, tests/imageproof -->
+    <sourceDirectory>src</sourceDirectory>
+    <plugins>
+      <!-- Tests are plain main() programs (no test library); run them at `mvn test`. -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>core-tests</id>
+            <phase>test</phase>
+            <goals><goal>java</goal></goals>
+            <configuration>
+              <mainClass>imageproof.ComparisonTest</mainClass>
+              <classpathScope>test</classpathScope>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <id>add-tests</id>
+            <phase>generate-test-sources</phase>
+            <goals><goal>add-test-source</goal></goals>
+            <configuration><sources><source>tests</source></sources></configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.2</version>
+        <configuration>
+          <archive><manifest><mainClass>imageproof.App</mainClass></manifest></archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

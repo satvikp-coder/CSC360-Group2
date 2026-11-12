@@ -39,3 +39,4 @@ samples/private/
 .DS_Store
 Thumbs.db
 *.log
+target/
