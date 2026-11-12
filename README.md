@@ -12,6 +12,11 @@ This is an **educational image-comparison tool**, not a forensic authentication 
 
 **Current status:** Project planning and documentation. The image-analysis application has **not been implemented yet**.
 
+Issue #5 adds reproducible synthetic sample images, a Java 17 dataset generator
+and dependency-free tests. See [evaluation and reproduction commands](docs/EVALUATION.md).
+Measured scores remain blocked until the histogram and comparison components
+are available; no classification threshold has been validated.
+
 Issue #4 adds a standalone Swing histogram panel and dependency-free headless
 tests. See [panel setup and integration contract](docs/HISTOGRAM_PANEL.md) for
 Java 17 build commands and verification status. The full application is pending.
