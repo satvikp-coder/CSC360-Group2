@@ -35,8 +35,9 @@ public final class Histogram {
             throw new IllegalArgumentException("Image exceeds the 16 megapixel limit");
         int[] gray = new int[width * height];
         boolean plainGray = image.getColorModel().getColorSpace().getType() == java.awt.color.ColorSpace.TYPE_GRAY
-                && !image.getColorModel().hasAlpha() && image.getRaster().getNumBands() == 1;
+                && image.getColorModel().getNumColorComponents() == 1;
         int[] row = new int[width];
+        int[] alphaRow = new int[width];
         for (int y = 0; y < height; y++) {
             ImageAnalyzer.checkCancelled();
             if (plainGray) {
@@ -44,7 +45,13 @@ public final class Histogram {
                 if (bits != 8 && bits != 16) throw new IllegalArgumentException("Use 8/16-bit grayscale");
                 int maximum = bits == 16 ? 65535 : 255;
                 image.getRaster().getSamples(0, y, width, 1, 0, row);
-                for (int x = 0; x < width; x++) gray[y * width + x] = (row[x] * 255 + maximum / 2) / maximum;
+                if (image.getColorModel().hasAlpha()) image.getRaster().getSamples(0, y, width, 1, 1, alphaRow);
+                for (int x = 0; x < width; x++) {
+                    int value = (row[x] * 255 + maximum / 2) / maximum;
+                    int alpha = image.getColorModel().hasAlpha() ? (alphaRow[x] * 255 + maximum / 2) / maximum : 255;
+                    if (image.isAlphaPremultiplied() && alpha > 0) value = Math.min(255, (value * 255 + alpha / 2) / alpha);
+                    gray[y * width + x] = composite(value, alpha);
+                }
             } else {
                 image.getRGB(0, y, width, 1, row, 0, width);
                 for (int x = 0; x < width; x++) {

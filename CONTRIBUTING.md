@@ -1,6 +1,6 @@
 # Contributing
 
-This repository is for **CSC360 Group 2**. Contributions should support the assigned basic histogram-based image comparison project.
+This repository is for **CSC360 Group 2**. The current product is the offline single-image analyzer in `docs/SINGLE_IMAGE_BLUEPRINT.md`; preserve useful legacy comparison code/tests.
 
 ## Team workflow
 
@@ -15,7 +15,8 @@ This repository is for **CSC360 Group 2**. Contributions should support the assi
 - Prefer clear, understandable code suited to an academic demonstration.
 - Separate image loading, histogram calculation, comparison, and presentation.
 - Add tests for correct calculations and invalid inputs.
-- Do not label an image as definitely forged on histogram evidence alone.
+- Report numerical measurements and limitations; never infer forgery, authenticity or an editing probability from unusual statistics.
+- Use Java 17/Swing/ImageIO only for analysis: no ML, pretrained models, OpenCV, external analysis APIs or unnecessary dependencies.
 - Avoid including confidential images, personal information, credentials, or unlicensed sample data.
 
 ## Documentation updates

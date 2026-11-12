@@ -106,7 +106,10 @@ public final class App {
                 } catch (CancellationException ignored) {
                     // A newer selection owns status and results.
                 } catch (InterruptedException exception) { Thread.currentThread().interrupt(); }
-                catch (ExecutionException | RuntimeException exception) { showError("Cannot load image", exception); }
+                catch (ExecutionException | RuntimeException exception) {
+                    if (image != null && result == null) overview.setText("Current image retained. Press Analyze to calculate measurements again.");
+                    showError("Cannot load image", exception);
+                }
                 loading = false; refreshStatus();
             }
         };
@@ -133,14 +136,17 @@ public final class App {
                 try { result = get(); displayResults(); }
                 catch (CancellationException ignored) {}
                 catch (InterruptedException exception) { Thread.currentThread().interrupt(); }
-                catch (ExecutionException | RuntimeException exception) { showError("Analysis failed", exception); }
+                catch (ExecutionException | RuntimeException exception) {
+                    overview.setText("Analysis failed. The image is retained; you may retry or upload another image.");
+                    showError("Analysis failed", exception);
+                }
                 analyzing = false; refreshStatus();
             }
         };
         analysisWorker.execute();
     }
     private void displayResults() {
-        preview.setResult(result); global.setValues(result.histogram());
+        preview.setResult(result); scaleHistograms(null); global.setValues(result.histogram());
         Histogram.Statistics statistics = result.statistics();
         double maximum = 0;
         for (RegionAnalyzer.Region region : result.regions().regions()) maximum = Math.max(maximum, region.variation());
@@ -159,10 +165,17 @@ public final class App {
     }
     private void inspectRegion(int index) {
         if (result == null) return;
-        RegionAnalyzer.Region region = result.regions().regions()[index]; selected.setValues(region.histogram());
+        RegionAnalyzer.Region region = result.regions().regions()[index];
+        scaleHistograms(region.histogram()); selected.setValues(region.histogram());
         String text = String.format(Locale.ROOT, "Region (%d,%d) %d×%d • TVD %.4f • mean %.2f • residual variance %.2f",
                 region.x(), region.y(), region.width(), region.height(), region.variation(), region.statistics().mean(), result.residualVariance()[index]);
         selectedDetails.setText(text); status.setText(text);
+    }
+    private void scaleHistograms(double[] regional) {
+        double maximum = 0;
+        for (double value : result.histogram()) maximum = Math.max(maximum, value);
+        if (regional != null) for (double value : regional) maximum = Math.max(maximum, value);
+        global.setMaximumFrequency(maximum); selected.setMaximumFrequency(maximum);
     }
     private void refreshStatus() {
         analyze.setEnabled(image != null && !loading && !analyzing);

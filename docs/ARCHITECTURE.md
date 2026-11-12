@@ -1,205 +1,59 @@
-# Simple-Image-Proof — Architecture
+# Single-image architecture
 
-**CSC360 · Group 2** · Minimal version: two images, one grayscale histogram each, one difference score (no verdict until a threshold is validated).
+Current scope: [blueprint](SINGLE_IMAGE_BLUEPRINT.md). The earlier
+[two-image architecture](LEGACY_ARCHITECTURE.md) is retained as history.
 
-> One-line idea: count how many pixels have each brightness (0–255) in both images, compare the counts, and report how different the brightness distributions are.
-
----
-
-## 1. Big picture
-
-```mermaid
-flowchart LR
-    A[Original image] --> C[Convert to grayscale]
-    B[Suspect image] --> C
-    C --> D[Count pixels per gray value<br/>256 bins]
-    D --> E[Normalize<br/>count ÷ total pixels]
-    E --> F[Difference score<br/>0.5 × Σ abs p−q]
-    F --> G[Show score + caveat<br/>wording pending threshold study #6]
+```text
+one JPEG/PNG -> ImageAnalyzer.load -> App preview
+Analyze -> background ImageAnalyzer -> Histogram.grayPixels
+    -> global histogram + mean / population SD / entropy
+    -> RegionAnalyzer -> per-tile histograms + neighboring TVD
+    -> NoiseAnalyzer -> tile residual variance
+    -> EdgeAnalyzer -> Sobel strength image
+    -> CopyMoveAnalyzer -> bounded coherent exact-block candidates
+AnalysisResult -> Swing histogram / image overlay / numeric evidence
 ```
 
-The same steps run on **both** images. Only the last two boxes look at both together.
+`App` owns Swing state. `ImagePanel` uses one aspect-preserving transform for
+the displayed image, tile overlays, click mapping and candidate rectangles.
+`WorkerTickets` rejects late load/analysis completions. Only background workers
+decode files or run the analysis modules. Mathematical classes do not use Swing.
+The old `LegacyComparisonApp` and TVD tests are preserved, outside the primary UI.
 
----
+## Numerical definitions
 
-## 2. What happens to the pixels
+- Gray: round(0.299R + 0.587G + 0.114B). Alpha channels are composited onto white
+  with `(channel*alpha + 255*(255-alpha) + 127)/255`, integer division.
+  Gray color-space raster samples retain encoded intensity, including gray-alpha;
+  16-bit values are rounded to 0–255. Premultiplied gray is unpremultiplied first.
+  This convention avoids ImageIO's gray-to-sRGB brightness conversion. It is not
+  calibrated physical luminance; preview color management may look different.
+- Histogram: exactly 256 counts; normalization uses a long total and rejects
+  null/wrong length/negative/zero-total arrays. Fully transparent images become
+  white rather than empty. Inputs are bounded to 16 million pixels.
+- Statistics: mean = sum(i*p[i]); population variance = sum((i-mean)^2*p[i]);
+  entropy = -sum(p[i]*log2(p[i])) for nonzero bins.
+- Tiles: 64×64 by default, partial edge tiles kept. Variation = arithmetic mean
+  of `0.5*sum(abs(p-q))` to existing up/down/left/right neighbors; no neighbors = 0.
+- Noise: gray minus the available 3×3 mean (smaller neighborhood at borders).
+  Welford's population residual variance is calculated in each tile. The map
+  uses variance/max variance in this image; values are not calibrated noise scores.
+- Sobel: kernels [-1,0,1; -2,0,2; -1,0,1] and its transpose; border coordinates
+  clamp to the nearest pixel. Display = round(hypot(gx,gy)/(4*sqrt(2))), max 255.
+- Copy candidates: 16×16 grayscale blocks on an 8-pixel grid; variance <25 is
+  ignored. A 64-bit content hash finds candidates, then all pixels are checked.
+  Exclude pairs within 32 pixels in both axes. Require at least three pairs
+  sharing one displacement. This is displacement coherence, not object recognition.
 
-![From one pixel to a normalized histogram](images/pixel-to-histogram.svg)
+## Bounds and interpretation
 
-| Step | Input | Output |
-|---|---|---|
-| Grayscale | pixel (R, G, B) | one number 0–255: `0.299R + 0.587G + 0.114B` |
-| Histogram | all gray values | `int[256]` — `hist[v]` = how many pixels have gray value `v` |
-| Normalize | `int[256]` | `double[256]` — each count ÷ total pixels; all values add up to 1 |
+Copy search examines at most 50,000 blocks / 200,000 comparisons, keeps at most
+16 positions per hash bucket / 4,096 raw matches and returns at most 256 pairs.
+Truncation is visible. More/larger/rotated/scaled/off-grid or recompressed copies
+can be missed. Repeated natural texture can match. Module loops check interruption.
+The file loader inspects dimensions before decoding and accepts JPEG/PNG only.
 
-**Why normalize?** A 4000×3000 photo has far more pixels than a 400×300 copy. Dividing by the total turns counts into *fractions*, so image size stops mattering.
-
-**Why these weights (0.299, 0.587, 0.114)?** Human eyes are most sensitive to green and least to blue. This is the standard luminance formula (ITU-R BT.601).
-
----
-
-## 3. How two histograms are compared
-
-![Comparing two histograms](images/histogram-compare.svg)
-
-```
-difference = 0.5 × Σ |p[i] − q[i]|      for i = 0 … 255
-```
-
-- `p` = normalized histogram of original, `q` = of suspect.
-- `|p[i] − q[i]|` = how far apart the two bars are at gray value `i` (red bars in panel B).
-- Add all gaps, then halve → result always between **0** (identical histograms) and **1** (no overlap at all).
-- Name of this measure: **total variation distance**.
-
-**No verdict yet:** the app shows only the score and a caveat. A threshold `T` (and any wording such as "brightness distribution changed") may be added only after it is chosen from our test results (section 7, issue #6). The score is never presented as proof of editing or forgery.
-
----
-
-## 4. Classes (only 4)
-
-```mermaid
-classDiagram
-    class App {
-        -BufferedImage original
-        -BufferedImage suspect
-        -HistogramPanel originalPanel
-        -HistogramPanel suspectPanel
-        -JLabel resultLabel
-        +main(String[] args)
-        -loadImage() BufferedImage
-        -compare()
-    }
-    class Histogram {
-        +toGray(int rgb)$ int
-        +compute(BufferedImage img)$ int[]
-        +normalize(int[] counts)$ double[]
-    }
-    class Comparison {
-        +difference(double[] p, double[] q)$ double
-    }
-    class HistogramPanel {
-        -double[] values
-        +setValues(double[] values)
-        #paintComponent(Graphics g)
-    }
-    App --> Histogram : uses
-    App --> Comparison : uses
-    App *-- "2" HistogramPanel : shows
-```
-
-| Class | Job (one sentence) | Knows about Swing? |
-|---|---|---|
-| `Histogram` | Turns an image into a normalized 256-value array. | No |
-| `Comparison` | Turns two arrays into a score in [0, 1]. No threshold or verdict. | No |
-| `HistogramPanel` | Draws one array as bars on screen. | Yes |
-| `App` | Window, buttons, file loading; connects everything. | Yes |
-
-**Design rule:** the math (`Histogram`, `Comparison`) never touches the UI. It can be tested alone, and explained alone.
-
----
-
-## 5. What happens when you click "Compare"
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant App
-    participant Histogram
-    participant Comparison
-    participant Panels as HistogramPanel ×2
-
-    User->>App: Load Original / Load Suspect
-    App->>App: ImageIO.read(file) → BufferedImage
-    User->>App: click Compare
-    App->>Histogram: compute(original)
-    Histogram-->>App: int[256] counts
-    App->>Histogram: normalize(counts)
-    Histogram-->>App: double[256] p
-    App->>Histogram: compute + normalize (suspect)
-    Histogram-->>App: double[256] q
-    App->>Comparison: difference(p, q)
-    Comparison-->>App: score
-    App->>Panels: setValues(p), setValues(q)
-    Panels-->>User: bars redrawn
-    App-->>User: "Histogram difference: 0.2700" + caveat
-```
-
----
-
-## 6. Screen layout
-
-![UI wireframe](images/ui-wireframe.svg)
-
-One window (`JFrame`): button row on top, two image previews, two histogram panels, one result line.
-
----
-
-## 7. Testing: how we pick threshold T
-
-```mermaid
-flowchart LR
-    O[One original photo] --> E1[Same file]
-    O --> E2[Brighter]
-    O --> E3[More contrast]
-    O --> E4[Cropped]
-    O --> E5[Re-saved as JPEG]
-    O --> E6[Pixels shuffled]
-    E1 & E2 & E3 & E4 & E5 & E6 --> R[Record score of each pair]
-    R --> T[Choose T between<br/>'same' scores and 'edited' scores]
-```
-
-| # | Pair | Expected |
-|---|---|---|
-| 1 | Image vs itself | score = 0 |
-| 2 | vs brighter copy | high score |
-| 3 | vs higher contrast | high score |
-| 4 | vs cropped | some score, depends on what was cut |
-| 5 | vs JPEG re-save | small score — **not** an edit; T must sit above this |
-| 6 | vs shuffled pixels | score = 0 — **limitation demo** |
-| 7 | Non-image file | clear error message, no score |
-
-Edits are made by hand in any image editor (e.g., GIMP / Preview) and saved in `samples/`.
-
----
-
-## 8. What this method cannot do (we say this openly)
-
-```mermaid
-flowchart LR
-    X[Histogram keeps only<br/>HOW MANY pixels per brightness] --> Y[Loses WHERE pixels are]
-    Y --> Z1[Shuffled image → same histogram → score 0]
-    Y --> Z2[Small pasted object → tiny change → may be missed]
-    X --> Z3[JPEG / resize change bars slightly → possible false alarm]
-```
-
-So a high score means *"brightness distribution changed"*, not *"proof of forgery"*; a low score does not prove an image is unedited.
-
----
-
-## 9. Files
-
-```
-CSC360-Group2/
-├── src/imageproof/
-│   ├── App.java             window + buttons + glue
-│   ├── Histogram.java       gray, count, normalize
-│   ├── Comparison.java      total variation score (no verdict)
-│   └── HistogramPanel.java  draws bars
-├── samples/                 test images (original + edited copies)
-└── docs/
-    ├── ARCHITECTURE.md      this file
-    ├── JAVA_CONCEPTS.md     Java topics needed
-    └── images/              diagrams used here
-```
-
-Build & run (plain JDK 17, no libraries):
-
-```bash
-javac -d out src/imageproof/*.java
-```
-
-```bash
-java -cp out imageproof.App
-```
-
-A Maven build (`mvn package`, `launcher.sh` / `launcher.bat`) is added by PR #11; the plain `javac` commands above work without it.
+Hot tiles can be normal dark/bright boundaries. Residuals include texture and
+edges; no camera-sensor identity is inferred. No measurements are combined into
+an editing probability, automatic verdict or anomaly index. Evaluation records
+real failure cases in [EVALUATION.md](EVALUATION.md).

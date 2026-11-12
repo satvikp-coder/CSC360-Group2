@@ -41,6 +41,14 @@ public final class AnalyzerTest {
             near(Comparison.difference(Histogram.normalize(Histogram.compute(image)), Histogram.normalize(Histogram.compute(rgb))), 0, "gray RGB equivalence");
         }
         BufferedImage alpha = new BufferedImage(3, 1, BufferedImage.TYPE_INT_ARGB);
+        java.awt.image.ComponentColorModel grayAlphaModel = new java.awt.image.ComponentColorModel(
+                java.awt.color.ColorSpace.getInstance(java.awt.color.ColorSpace.CS_GRAY), true, false,
+                java.awt.Transparency.TRANSLUCENT, java.awt.image.DataBuffer.TYPE_BYTE);
+        java.awt.image.WritableRaster grayAlphaRaster = java.awt.image.Raster.createInterleavedRaster(
+                java.awt.image.DataBuffer.TYPE_BYTE, 1, 1, 2, null);
+        grayAlphaRaster.setPixel(0, 0, new int[]{100, 128});
+        BufferedImage grayAlpha = new BufferedImage(grayAlphaModel, grayAlphaRaster, false, null);
+        check(Histogram.grayPixels(grayAlpha)[0] == 177, "gray-alpha uses encoded sample before white composition");
         alpha.setRGB(0, 0, 0x00ffffff); alpha.setRGB(1, 0, 0x00000000); alpha.setRGB(2, 0, 0x80000000);
         int[] gray = Histogram.grayPixels(alpha);
         check(gray[0] == 255 && gray[1] == 255 && gray[2] == 127, "white alpha composition");

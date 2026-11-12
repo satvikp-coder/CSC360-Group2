@@ -1,17 +1,17 @@
 # Java Concepts Needed — Simple-Image-Proof
 
-Only what the 4 classes actually use. Grouped by where you'll meet it.
+Current architecture: see ARCHITECTURE.md. These introductory notes also retain examples from the legacy comparison app.
 
 ## 1. Core Java (used everywhere)
 | Concept | Where in project |
 |---|---|
-| Classes, `static` methods & constants | `Histogram`, `Comparison` are all-static helpers; `THRESHOLD` is `static final` |
+| Classes, `static` methods & constants | `Histogram`, `Comparison` are mathematical helpers; tile/resource limits are constants |
 | Packages (`package imageproof;`) & `import` | Top of every file |
 | Arrays: `int[]`, `double[]`, indexing | `hist[gray]++`, 256-bin arrays |
 | Nested `for` loops | Walk every pixel: `for y … for x …` |
 | `int` vs `double`, casting | `(double) count / total` — **without the cast, int division gives 0** |
 | `Math.round`, `Math.abs` | Gray value rounding; `|p − q|` |
-| `if` / boolean return | `isEdited(score)` |
+| `if` / boolean return | Validate inputs or reject stale worker results; no editing verdict |
 
 ## 2. Images (`java.awt.image`, `javax.imageio`)
 | Concept | Where |
