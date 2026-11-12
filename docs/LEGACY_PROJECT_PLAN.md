@@ -1,4 +1,7 @@
-# Project Plan — Simple-Image-Proof
+# Archived two-image project plan
+
+Historical plan only; current scope and acceptance criteria are in
+SINGLE_IMAGE_BLUEPRINT.md, ROADMAP.md and PROJECT_PLAN.md.
 
 **Course:** CSC360  
 **Group:** 2  

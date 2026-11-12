@@ -25,6 +25,18 @@ public final class ImagePanelTest {
                 check(panel.regionAt(new Point(bounds.x - 1, bounds.y)) == -1, "letterbox is not a tile");
                 check(panel.regionAt(new Point(bounds.x + bounds.width - 1, bounds.y + bounds.height - 1)) >= 0, "partial edge click valid");
             }
+            panel.setSize(65, 33); panel.setView("Sobel edges");
+            BufferedImage edgeView = new BufferedImage(65, 33, BufferedImage.TYPE_INT_RGB);
+            Graphics2D edgeGraphics = edgeView.createGraphics(); panel.paint(edgeGraphics); edgeGraphics.dispose();
+            check(edgeView.getRGB(32, 16) == result.edges().getRGB(32, 16), "Sobel view uses measured map");
+            panel.setView("Noise residual");
+            BufferedImage noiseView = new BufferedImage(65, 33, BufferedImage.TYPE_INT_RGB);
+            Graphics2D noiseGraphics = noiseView.createGraphics(); panel.paint(noiseGraphics); noiseGraphics.dispose();
+            double maximum = java.util.Arrays.stream(result.residualVariance()).max().orElse(0);
+            check(noiseView.getRGB(16, 16) == ImagePanel.heatColor(result.residualVariance()[0] / maximum).getRGB(), "noise view uses relative tile variance");
+            panel.setOverlay(false);
+            Graphics2D plainGraphics = noiseView.createGraphics(); panel.paint(plainGraphics); plainGraphics.dispose();
+            check(noiseView.getRGB(16, 16) == image.getRGB(16, 16), "overlay toggle restores image");
             panel.setResult(null); check(panel.regionAt(new Point(50, 50)) == -1, "no stale regions");
         });
         WorkerTickets tickets = new WorkerTickets();

@@ -3,6 +3,8 @@
 Actual measurements are in [SINGLE_IMAGE_RESULTS.csv](SINGLE_IMAGE_RESULTS.csv),
 recorded on Windows with Temurin 17.0.21+9, compiled with JDK 24.0.2 release 17.
 The CSV contains measurements, not expected values or editing probabilities.
+`mean_residual_variance` is the unweighted mean of the tile population variances,
+including partial edge tiles; it is not the variance of all residual pixels.
 Legacy pair generation/tests and [earlier report](LEGACY_EVALUATION.md) are retained.
 
 ## Reproduce

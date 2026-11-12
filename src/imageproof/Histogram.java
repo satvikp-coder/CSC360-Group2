@@ -47,9 +47,11 @@ public final class Histogram {
                 image.getRaster().getSamples(0, y, width, 1, 0, row);
                 if (image.getColorModel().hasAlpha()) image.getRaster().getSamples(0, y, width, 1, 1, alphaRow);
                 for (int x = 0; x < width; x++) {
-                    int value = (row[x] * 255 + maximum / 2) / maximum;
-                    int alpha = image.getColorModel().hasAlpha() ? (alphaRow[x] * 255 + maximum / 2) / maximum : 255;
-                    if (image.isAlphaPremultiplied() && alpha > 0) value = Math.min(255, (value * 255 + alpha / 2) / alpha);
+                    int raw = row[x], rawAlpha = image.getColorModel().hasAlpha() ? alphaRow[x] : maximum;
+                    if (image.isAlphaPremultiplied() && rawAlpha > 0)
+                        raw = (int) Math.min(maximum, ((long) raw * maximum + rawAlpha / 2) / rawAlpha);
+                    int value = (raw * 255 + maximum / 2) / maximum;
+                    int alpha = (rawAlpha * 255 + maximum / 2) / maximum;
                     gray[y * width + x] = composite(value, alpha);
                 }
             } else {

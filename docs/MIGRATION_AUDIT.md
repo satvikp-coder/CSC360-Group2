@@ -26,3 +26,24 @@ README, architecture, project plan, evaluation status and two-image manual
 instructions are outdated for the professor's new one-image requirement.
 The blueprint is recorded before issue administration. No closed issue is
 reopened simply because the scope changed.
+
+## Issue disposition
+
+| Issues | Disposition |
+|---|---|
+| #2, #4, #13, #15, #17, #24 | Already closed; left unchanged |
+| #1 | Relevant histogram foundation; owner kept; companion implementation in #31 |
+| #3 | Partial legacy app; Varun's history/body kept; migration follow-up #27 |
+| #5 | Updated to single-image fixtures/actual evaluation, preserving legacy artifacts |
+| #6 | Commented, then closed as not planned: threshold-verdict work superseded by the explicit scope decision |
+| #7, #14 | Build/CI remain relevant; implementation and evidence proposed in #31 |
+| #8, #16 | Delivery work retained with original owners; migration notes posted |
+| #22, #23 | Valid gray/alpha bugs retained; coordinated companion fixes in #31 |
+| #25, #26 | Valid launcher/portability bugs retained; reviewed and fixes proposed |
+| #27–#30 | Four grouped new issues; implementation in #31; unassigned for team allocation |
+
+No teammate assignment or active branch was changed. PR #20 remains draft/open
+with an explanatory migration comment. PR #31 requests review from Varun,
+Shambhavee and Garv. Main was not overwritten or force-pushed. Branch-protection
+details were unavailable to the connector (403); repository rulesets list was
+empty. The change remains reviewable, rather than bypassing any review gate.

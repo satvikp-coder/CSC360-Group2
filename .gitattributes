@@ -1,3 +1,6 @@
 # Preserve byte-exact generated text on Windows and Unix checkouts.
 samples/generated/SHA256SUMS text eol=lf
 samples/generated/unsupported.txt text eol=lf
+launcher.sh text eol=lf
+*.png binary
+*.jpg binary

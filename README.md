@@ -25,6 +25,7 @@ check prerequisites and let Maven rebuild changes, skipping test execution only
 for startup. Run `mvn test` separately to verify changes. Maven's first build
 downloads build plugins; after packaging, the JAR analyzes images without any
 network connection. No image is uploaded to an external service.
+Close the running app before rebuilding on Windows, where its JAR can be locked.
 
 ## Use
 

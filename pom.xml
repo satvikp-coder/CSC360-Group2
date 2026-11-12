@@ -39,52 +39,13 @@
         </configuration>
         <executions>
           <execution>
-            <id>comparisontest</id>
+            <id>all-tests</id>
             <phase>test</phase>
             <goals><goal>java</goal></goals>
             <configuration>
-              <mainClass>imageproof.ComparisonTest</mainClass>
+              <mainClass>imageproof.AllTests</mainClass>
               <classpathScope>test</classpathScope>
             </configuration>
-          </execution>
-          <execution>
-            <id>histogrampaneltest</id>
-            <phase>test</phase>
-            <goals><goal>java</goal></goals>
-            <configuration>
-              <mainClass>imageproof.HistogramPanelTest</mainClass>
-              <classpathScope>test</classpathScope>
-            </configuration>
-          </execution>
-          <execution>
-            <id>datasettest</id>
-            <phase>test</phase>
-            <goals><goal>java</goal></goals>
-            <configuration>
-              <mainClass>imageproof.DatasetTest</mainClass>
-              <classpathScope>test</classpathScope>
-            </configuration>
-          </execution>
-          <execution>
-            <id>histogramtest</id>
-            <phase>test</phase>
-            <goals><goal>java</goal></goals>
-            <configuration>
-              <mainClass>imageproof.HistogramTest</mainClass>
-              <classpathScope>test</classpathScope>
-            </configuration>
-          </execution>
-          <execution>
-            <id>analyzertest</id><phase>test</phase><goals><goal>java</goal></goals>
-            <configuration><mainClass>imageproof.AnalyzerTest</mainClass><classpathScope>test</classpathScope></configuration>
-          </execution>
-          <execution>
-            <id>imagepaneltest</id><phase>test</phase><goals><goal>java</goal></goals>
-            <configuration><mainClass>imageproof.ImagePanelTest</mainClass><classpathScope>test</classpathScope></configuration>
-          </execution>
-          <execution>
-            <id>singleimagedatasettest</id><phase>test</phase><goals><goal>java</goal></goals>
-            <configuration><mainClass>imageproof.SingleImageDatasetTest</mainClass><classpathScope>test</classpathScope></configuration>
           </execution>
         </executions>
       </plugin>

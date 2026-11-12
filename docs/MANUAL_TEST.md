@@ -36,13 +36,24 @@ The known cyan source and magenta destination aligned with the image. Opening
 the chooser and cancelling preserved the selected image and displayed result.
 The first visual check exposed an unreadable fixed histogram scale; the code
 was corrected to a shared global/selected data maximum for subsequent inspection.
+Desktop automation was then stopped by the user with Escape. No further desktop
+interaction was performed; fresh visual verification of that scale correction
+and retained final screenshots remain outstanding.
 
 ## Delivery checklist
+
+Clean detached checkout `verify-single-image` passed `mvn clean verify`, and
+`mvn -f` passed when invoked from its parent directory. All seven headless main
+programs also passed on the actual Java 17 runtime. Windows launcher checks
+using stubbed Java/Maven commands verified a rebuild on each start, skipped test
+execution, and clear Java 8/missing Java/missing Maven failures. `bash -n
+launcher.sh` passed; a real macOS launch is still outstanding.
 
 - [x] Headless geometry checks at multiple aspect ratios and narrow sizes.
 - [x] Real one-image upload/analysis/region/copy workflow inspected.
 - [x] Java 17 visible App worker integration test, including 12 MP response.
 - [ ] Teammate demonstration/review and final course presentation approval.
+- [ ] Fresh visual check of the corrected histogram scale and final screenshots.
 - [ ] macOS launcher GUI inspection (no macOS desktop available here).
 
 CI checks are separate evidence; consult the PR's live check status. Never

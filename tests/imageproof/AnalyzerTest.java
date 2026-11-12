@@ -49,9 +49,19 @@ public final class AnalyzerTest {
         grayAlphaRaster.setPixel(0, 0, new int[]{100, 128});
         BufferedImage grayAlpha = new BufferedImage(grayAlphaModel, grayAlphaRaster, false, null);
         check(Histogram.grayPixels(grayAlpha)[0] == 177, "gray-alpha uses encoded sample before white composition");
+        java.awt.image.ComponentColorModel premultipliedModel = new java.awt.image.ComponentColorModel(
+                java.awt.color.ColorSpace.getInstance(java.awt.color.ColorSpace.CS_GRAY), true, true,
+                java.awt.Transparency.TRANSLUCENT, java.awt.image.DataBuffer.TYPE_USHORT);
+        java.awt.image.WritableRaster premultipliedRaster = java.awt.image.Raster.createInterleavedRaster(
+                java.awt.image.DataBuffer.TYPE_USHORT, 1, 1, 2, null);
+        premultipliedRaster.setPixel(0, 0, new int[]{12850, 32768});
+        BufferedImage premultiplied = new BufferedImage(premultipliedModel, premultipliedRaster, true, null);
+        check(Histogram.grayPixels(premultiplied)[0] == 177, "16-bit gray-alpha unpremultiplies without integer overflow");
         alpha.setRGB(0, 0, 0x00ffffff); alpha.setRGB(1, 0, 0x00000000); alpha.setRGB(2, 0, 0x80000000);
         int[] gray = Histogram.grayPixels(alpha);
         check(gray[0] == 255 && gray[1] == 255 && gray[2] == 127, "white alpha composition");
+        check(Histogram.normalize(Histogram.compute(new BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB)))[255] == 1,
+                "all-transparent image has a valid white distribution");
         for (int type : new int[]{BufferedImage.TYPE_INT_ARGB_PRE, BufferedImage.TYPE_4BYTE_ABGR}) {
             BufferedImage alternate = new BufferedImage(3, 1, type);
             alternate.setRGB(0, 0, 0x00ffffff); alternate.setRGB(1, 0, 0x00000000); alternate.setRGB(2, 0, 0x80000000);
@@ -78,6 +88,12 @@ public final class AnalyzerTest {
         check((tiny.edges().getRGB(0, 0) & 0xffffff) == 0, "tiny edge");
         near(tiny.regions().regions()[0].variation(), 0, "no neighbors");
         check(tiny.copies().matches().isEmpty(), "tiny copies");
+        BufferedImage constant = new BufferedImage(4, 4, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < 4; y++) for (int x = 0; x < 4; x++) constant.setRGB(x, y, 0x646464);
+        AnalysisResult flat = ImageAnalyzer.analyze(constant, 64);
+        near(flat.residualVariance()[0], 0, "constant residual including borders");
+        for (int y = 0; y < 4; y++) for (int x = 0; x < 4; x++)
+            check((flat.edges().getRGB(x, y) & 0xffffff) == 0, "constant Sobel including borders");
         BufferedImage copied = copiedTexture();
         CopyMoveAnalyzer.Result copies = CopyMoveAnalyzer.analyze(Histogram.grayPixels(copied), 96, 96);
         check(copies.matches().stream().filter(m -> m.x2() - m.x1() == 64 && m.y2() - m.y1() == 64).count() >= 3,
@@ -88,6 +104,7 @@ public final class AnalyzerTest {
         copies = CopyMoveAnalyzer.analyze(repeated, 128, 128);
         check(!copies.matches().isEmpty(), "repeated-pattern false positives are real");
         check(copies.matches().size() <= 256 && copies.comparisons() <= CopyMoveAnalyzer.MAX_COMPARISONS, "bounded results");
+        check(copies.truncated(), "repeated-pattern output cap is disclosed");
         for (CopyMoveAnalyzer.Match match : copies.matches())
             check(Math.abs(match.x2() - match.x1()) >= 32 || Math.abs(match.y2() - match.y1()) >= 32, "exclude neighbors");
         Path invalid = Files.createTempFile("imageproof-invalid-", ".png");
@@ -98,6 +115,16 @@ public final class AnalyzerTest {
             javax.imageio.ImageIO.write(alpha, "png", invalid.toFile());
             ImageAnalyzer.Loaded loaded = ImageAnalyzer.load(invalid.toFile());
             check(loaded.format().equals("PNG") && loaded.image().getWidth() == 3, "PNG decoded");
+            byte[] oversized = Files.readAllBytes(invalid);
+            java.nio.ByteBuffer.wrap(oversized).putInt(16, 5000).putInt(20, 4000);
+            java.util.zip.CRC32 crc = new java.util.zip.CRC32(); crc.update(oversized, 12, 17);
+            java.nio.ByteBuffer.wrap(oversized).putInt(29, (int) crc.getValue());
+            Files.write(invalid, oversized);
+            try { ImageAnalyzer.load(invalid.toFile()); throw new AssertionError("Oversized header accepted"); }
+            catch (java.io.IOException expected) { check(expected.getMessage().contains("16 million"), "dimension limit checked before decoding"); }
+            javax.imageio.ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "gif", invalid.toFile());
+            try { ImageAnalyzer.load(invalid.toFile()); throw new AssertionError("GIF accepted by PNG/JPEG loader"); }
+            catch (java.io.IOException expected) { checks++; }
         } finally { Files.delete(invalid); }
         Thread.currentThread().interrupt();
         try { ImageAnalyzer.analyze(copied, 64); throw new AssertionError("Cancellation ignored"); }

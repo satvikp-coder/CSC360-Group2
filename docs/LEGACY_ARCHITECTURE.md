@@ -1,4 +1,8 @@
-# Simple-Image-Proof — Architecture
+# Archived two-image architecture
+
+Historical design only. The current scope is SINGLE_IMAGE_BLUEPRINT.md and
+ARCHITECTURE.md. Threshold-selection discussion here is superseded; it does not
+describe the current product or authorize an editing verdict.
 
 **CSC360 · Group 2** · Minimal version: two images, one grayscale histogram each, one difference score (no verdict until a threshold is validated).
 
