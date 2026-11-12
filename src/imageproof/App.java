@@ -4,6 +4,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 
@@ -23,6 +24,9 @@ public final class App {
     private final JButton compare = new JButton("Compare");
     private final JLabel result = new JLabel("Choose both images, then press Compare.", SwingConstants.CENTER);
     private File lastDir;
+    /** Incremented per selection / input change so slow background results can be recognised as stale. */
+    private final int[] loadTickets = new int[2];
+    private int resultTicket;
 
     private App() {
         JPanel top = new JPanel(new GridLayout(1, 3, 8, 8));
@@ -62,49 +66,104 @@ public final class App {
         return b;
     }
 
-    /** Asks for a file and, if it is a readable image, stores it in {@code slot} (0 = reference, 1 = comparison). */
+    /** Result of decoding a file in the background. */
+    private record Loaded(BufferedImage image, BufferedImage thumb) {}
+
+    /**
+     * Asks for a file and decodes it on a background thread so the window stays responsive. The image is stored
+     * in {@code slot} (0 = reference, 1 = comparison) only if it is readable and no newer selection was made for
+     * that slot meanwhile.
+     */
     private void load(int slot) {
         JFileChooser fc = new JFileChooser(lastDir);
         if (fc.showOpenDialog(frame) != JFileChooser.APPROVE_OPTION) return; // cancel keeps current state
         File f = fc.getSelectedFile();
         lastDir = f.getParentFile();
-        BufferedImage img;
-        try {
-            img = ImageIO.read(f);
-        } catch (IOException | RuntimeException ex) {
-            error("Could not read \"" + f.getName() + "\": " + ex.getMessage());
-            return;
-        }
-        if (img == null) { error("\"" + f.getName() + "\" is not a supported image (try PNG, JPG, GIF or BMP)."); return; }
-        images[slot] = img;
-        previews[slot].setText(null);
-        previews[slot].setIcon(new ImageIcon(thumb(img)));
-        previews[slot].setToolTipText(f.getName() + " — " + img.getWidth() + "×" + img.getHeight());
-        invalidateResult(); // old score/plots no longer match the inputs
-        compare.setEnabled(images[0] != null && images[1] != null);
+        int ticket = ++loadTickets[slot]; // a later choice for this slot makes this result stale
+        String before = result.getText(); // restored if loading fails, since the old inputs stay valid
+        status("Loading " + f.getName() + "…");
+        new SwingWorker<Loaded, Void>() {
+            @Override protected Loaded doInBackground() throws IOException {
+                BufferedImage img = ImageIO.read(f);
+                return img == null ? null : new Loaded(img, thumb(img));
+            }
+
+            @Override protected void done() {
+                if (ticket != loadTickets[slot]) return; // stale: superseded by a newer selection
+                try {
+                    Loaded l = get();
+                    if (l == null) { error("\"" + f.getName() + "\" is not a supported image (try PNG, JPG, GIF or BMP)."); }
+                    else {
+                        images[slot] = l.image();
+                        previews[slot].setText(null);
+                        previews[slot].setIcon(new ImageIcon(l.thumb()));
+                        previews[slot].setToolTipText(f.getName() + " — " + l.image().getWidth() + "×" + l.image().getHeight());
+                        invalidateResult(); // old score/plots no longer match the inputs
+                        return;
+                    }
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException | RuntimeException ex) {
+                    Throwable c = ex.getCause() == null ? ex : ex.getCause();
+                    error("Could not read \"" + f.getName() + "\": " + c.getMessage());
+                }
+                status(before);
+            }
+        }.execute();
     }
+
+    private void status(String text) { result.setText(text); }
 
     /** Clears both plots and the score because the inputs no longer match them. */
     private void invalidateResult() {
+        resultTicket++; // discards any comparison still running
         for (HistogramPanel p : panels) p.clearData();
         result.setText("Inputs changed — press Compare.");
+        compare.setEnabled(images[0] != null && images[1] != null);
     }
 
-    /** Computes both normalized histograms and their distance, and displays them. */
+    /** Computes both normalized histograms and their distance on a background thread, then displays them. */
     private void compare() {
-        double[] p = Histogram.normalize(Histogram.compute(images[0]));
-        double[] q = Histogram.normalize(Histogram.compute(images[1]));
-        double score = Comparison.difference(p, q);
-        panels[0].setValues(p);
-        panels[1].setValues(q);
-        result.setText(String.format("Histogram difference: %.4f", score));
+        BufferedImage ref = images[0], cmp = images[1];
+        int ticket = ++resultTicket;
+        compare.setEnabled(false);
+        status("Comparing…");
+        new SwingWorker<double[][], Void>() {
+            @Override protected double[][] doInBackground() {
+                return new double[][] {Histogram.normalize(Histogram.compute(ref)), Histogram.normalize(Histogram.compute(cmp))};
+            }
+
+            @Override protected void done() {
+                if (ticket != resultTicket) return; // inputs changed while computing: do not show a stale score
+                try {
+                    double[][] h = get();
+                    double score = Comparison.difference(h[0], h[1]);
+                    panels[0].setValues(h[0]);
+                    panels[1].setValues(h[1]);
+                    result.setText(String.format("Histogram difference: %.4f", score));
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException | RuntimeException ex) {
+                    result.setText("Comparison failed: " + (ex.getCause() == null ? ex : ex.getCause()).getMessage());
+                }
+                compare.setEnabled(true);
+            }
+        }.execute();
     }
 
-    private static Image thumb(BufferedImage img) {
+    /** Scaled copy no larger than 400 px on its longest side; runs off the event thread. */
+    private static BufferedImage thumb(BufferedImage img) {
         double s = Math.min(1.0, 400.0 / Math.max(img.getWidth(), img.getHeight()));
-        return img.getScaledInstance(Math.max(1, (int) (img.getWidth() * s)), Math.max(1, (int) (img.getHeight() * s)), Image.SCALE_SMOOTH);
+        int w = Math.max(1, (int) (img.getWidth() * s)), h = Math.max(1, (int) (img.getHeight() * s));
+        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = out.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.drawImage(img, 0, 0, w, h, null);
+        g.dispose();
+        return out;
     }
 
+    /** Must be called on the event dispatch thread. */
     private void error(String msg) { JOptionPane.showMessageDialog(frame, msg, "Cannot load image", JOptionPane.ERROR_MESSAGE); }
 
     /** Starts the UI on the event dispatch thread. */
