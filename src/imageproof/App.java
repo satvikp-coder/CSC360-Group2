@@ -4,24 +4,33 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSlider;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 // Main window: open one image, press Analyze, see the measurements.
+// Click a tile on the image to see that tile's histogram and numbers.
 // Slow work (loading, analysing) runs in SwingWorker threads so the window stays responsive.
-public class App implements ActionListener {
+public class App implements ActionListener, ChangeListener {
 
     static final String NOTE = "These are measurements, not a verdict. "
             + "Unusual values do NOT prove an image was edited, and normal values do NOT prove it is authentic.";
@@ -29,6 +38,8 @@ public class App implements ActionListener {
     JFrame frame = new JFrame("Simple-Image-Proof");
     JButton openButton = new JButton("Open image...");
     JButton analyzeButton = new JButton("Analyze");
+    JCheckBox showHeat = new JCheckBox("Show heatmap", true);
+    JSlider opacity = new JSlider(0, 100, 50);
     JLabel status = new JLabel("Open a PNG or JPEG image.");
     ImagePanel imagePanel = new ImagePanel();
     HistogramPanel histogramPanel = new HistogramPanel("Gray histogram (whole image)");
@@ -36,6 +47,7 @@ public class App implements ActionListener {
     JFileChooser chooser = new JFileChooser();
 
     LoadedImage current;   // image shown now, null if none
+    Analysis analysis;     // results for the current image, null if not analysed
     boolean busy = false;  // true while loading or analysing
 
     // Every new job gets a new number. A finished job whose number is old is ignored,
@@ -47,10 +59,17 @@ public class App implements ActionListener {
         openButton.addActionListener(this);
         analyzeButton.addActionListener(this);
         analyzeButton.setEnabled(false);
+        showHeat.addActionListener(this);
+        opacity.addChangeListener(this);
+        opacity.setPreferredSize(new Dimension(100, 20));
+        imagePanel.addMouseListener(new ClickHandler());
 
         JPanel top = new JPanel();
         top.add(openButton);
         top.add(analyzeButton);
+        top.add(showHeat);
+        top.add(new JLabel("Opacity"));
+        top.add(opacity);
         top.add(status);
 
         results.setEditable(false);
@@ -80,7 +99,46 @@ public class App implements ActionListener {
             openImage();
         } else if (e.getSource() == analyzeButton) {
             analyze();
+        } else if (e.getSource() == showHeat) {
+            imagePanel.setShowHeat(showHeat.isSelected());
         }
+    }
+
+    // Opacity slider moved.
+    public void stateChanged(ChangeEvent e) {
+        imagePanel.setOpacity(opacity.getValue());
+    }
+
+    // Mouse click on the image: select the tile under the mouse.
+    class ClickHandler extends MouseAdapter {
+        public void mouseClicked(MouseEvent e) {
+            if (analysis == null) {
+                return;
+            }
+            Point p = imagePanel.toImagePoint(e.getX(), e.getY());
+            if (p != null) {
+                selectTile(p.y / analysis.regions.tileSize, p.x / analysis.regions.tileSize);
+            }
+        }
+    }
+
+    void selectTile(int row, int col) {
+        Regions r = analysis.regions;
+        Rectangle b = r.bounds(row, col);
+        double[] h = r.histograms[row][col];
+        imagePanel.setSelected(b);
+        histogramPanel.setTitle("Gray histogram of tile row " + row + ", col " + col);
+        histogramPanel.setValues(h);
+        String text = "Selected tile: row " + row + ", col " + col + "\n"
+                + "  Pixels x " + b.x + " to " + (b.x + b.width - 1) + ", y " + b.y + " to " + (b.y + b.height - 1)
+                + "  (" + b.width + " x " + b.height + ")\n"
+                + String.format("  Mean gray:          %.2f%n", Histogram.mean(h))
+                + String.format("  Standard deviation: %.2f%n", Histogram.standardDeviation(h))
+                + String.format("  Entropy:            %.3f bits%n", Histogram.entropy(h))
+                + String.format("  Variation (TVD):    %.3f%n", r.variation[row][col])
+                + "\n" + resultText(analysis);
+        results.setText(text);
+        results.setCaretPosition(0);
     }
 
     void openImage() {
@@ -108,6 +166,8 @@ public class App implements ActionListener {
 
     // Clear everything that belonged to the previous image.
     void clearResults() {
+        analysis = null;
+        histogramPanel.setTitle("Gray histogram (whole image)");
         histogramPanel.setValues(null);
         results.setText(NOTE);
     }
@@ -118,15 +178,39 @@ public class App implements ActionListener {
     }
 
     void showResults(Analysis a) {
+        analysis = a;
+        histogramPanel.setTitle("Gray histogram (whole image)");
         histogramPanel.setValues(a.histogram);
+        imagePanel.setSelected(null);
+        imagePanel.setHeat(a.regions.variation, a.regions.tileSize, "Regional variation (TVD to neighbour tiles)");
+        results.setText("Click a tile on the image to inspect it.\n\n" + resultText(a));
+        results.setCaretPosition(0);
+    }
+
+    String resultText(Analysis a) {
+        Regions r = a.regions;
         String text = "Image: " + describe(current) + "\n\n"
                 + "Whole image\n"
                 + String.format("  Mean gray:          %.2f%n", a.mean)
                 + String.format("  Standard deviation: %.2f%n", a.standardDeviation)
                 + String.format("  Entropy:            %.3f bits (0 to 8)%n", a.entropy)
+                + "\nRegional variation, " + r.rows + " x " + r.cols + " tiles of " + r.tileSize + " px\n"
+                + "(average TVD to the tiles above, below, left, right; 0 = same, 1 = no overlap)\n"
+                + grid(r.variation)
                 + "\n" + NOTE;
-        results.setText(text);
-        results.setCaretPosition(0);
+        return text;
+    }
+
+    // Numbers of a grid, one line per row.
+    static String grid(double[][] values) {
+        StringBuilder text = new StringBuilder();
+        for (int row = 0; row < values.length; row++) {
+            for (int col = 0; col < values[row].length; col++) {
+                text.append(String.format("%6.3f", values[row][col]));
+            }
+            text.append("\n");
+        }
+        return text.toString();
     }
 
     void showError(String message) {

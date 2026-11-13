@@ -12,6 +12,7 @@ public class Analysis {
     public double mean;
     public double standardDeviation;
     public double entropy;
+    public Regions regions;
 
     public static Analysis run(BufferedImage image) {
         Analysis a = new Analysis();
@@ -22,6 +23,7 @@ public class Analysis {
         a.mean = Histogram.mean(a.histogram);
         a.standardDeviation = Histogram.standardDeviation(a.histogram);
         a.entropy = Histogram.entropy(a.histogram);
+        a.regions = Regions.analyze(a.gray, Regions.TILE);
         return a;
     }
 }
