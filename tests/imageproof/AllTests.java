@@ -7,6 +7,7 @@ public class AllTests {
     public static void main(String[] args) throws Exception {
         HistogramTest.main(args);
         ComparisonTest.main(args);
+        AnalysisTest.main(args);
         HistogramPanelTest.main(args);
         DatasetTest.main(args);
         System.out.println("All tests passed");
