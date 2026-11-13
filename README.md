@@ -82,13 +82,15 @@ See [Project Plan](docs/PROJECT_PLAN.md) for the proposed scope, acceptance crit
 
 Java 17+ with Swing and Maven. **No third-party libraries.** Sources live in `src/imageproof/`, tests in `tests/imageproof/`.
 
+Needs **JDK 17+** and **Maven**. No IDE needed.
+
 ```bash
-mvn test                              # runs ComparisonTest and HistogramTest
-mvn package                           # builds target/simple-image-proof-0.1.0.jar
+mvn test                                   # runs all tests (headless, fails the build on any error)
+mvn package -Dexec.skip=true               # builds target/simple-image-proof-0.1.0.jar without tests
 java -jar target/simple-image-proof-0.1.0.jar
 ```
 
-Or just run `./launcher.sh` (macOS/Linux) or `launcher.bat` (Windows); it builds the jar if needed and starts the app. On Windows, delete `target` to force a rebuild after code changes.
+Or run `./launcher.sh` (macOS/Linux) or `launcher.bat` (Windows). The launcher checks Java 17+ and Maven, rebuilds what changed, skips tests and starts the app. `mvn test` also works from another folder (`mvn -f path/to/pom.xml test`). GitHub Actions runs `mvn test` on Java 17 (Ubuntu and Windows) for every push and pull request.
 
 Usage: press **Load reference…** and **Load comparison…**, choose two images (PNG/JPG/GIF/BMP, sizes may differ), then press **Compare**. Changing either image clears the previous result. Unreadable or non-image files show an error and keep the current inputs.
 

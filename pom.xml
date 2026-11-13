@@ -10,67 +10,15 @@
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- No JUnit: turn off the default test runner, AllTests is run below instead -->
+    <skipTests>true</skipTests>
   </properties>
 
   <build>
-    <!-- Keep the team's existing layout: src/imageproof, tests/imageproof -->
+    <!-- App code in src/, tests in tests/, sample tools in tools/ -->
     <sourceDirectory>src</sourceDirectory>
     <plugins>
-      <!-- Tests are plain main() programs (no test library); run them at `mvn test`. They read
-           samples/ relative to the repo root, so run Maven from there. Demo/DesktopCheck classes
-           are compiled but not executed (they need a display). -->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>3.5.0</version>
-        <executions>
-          <execution>
-            <id>comparisontest</id>
-            <phase>test</phase>
-            <goals><goal>java</goal></goals>
-            <configuration>
-              <mainClass>imageproof.ComparisonTest</mainClass>
-              <classpathScope>test</classpathScope>
-              <systemProperties>
-                <systemProperty><key>java.awt.headless</key><value>true</value></systemProperty>
-              </systemProperties>
-            </configuration>
-          </execution>
-          <execution>
-            <id>histogrampaneltest</id>
-            <phase>test</phase>
-            <goals><goal>java</goal></goals>
-            <configuration>
-              <mainClass>imageproof.HistogramPanelTest</mainClass>
-              <classpathScope>test</classpathScope>
-              <systemProperties>
-                <systemProperty><key>java.awt.headless</key><value>true</value></systemProperty>
-              </systemProperties>
-            </configuration>
-          </execution>
-          <execution>
-            <id>datasettest</id>
-            <phase>test</phase>
-            <goals><goal>java</goal></goals>
-            <configuration>
-              <mainClass>imageproof.DatasetTest</mainClass>
-              <classpathScope>test</classpathScope>
-              <systemProperties>
-                <systemProperty><key>java.awt.headless</key><value>true</value></systemProperty>
-              </systemProperties>
-            </configuration>
-          </execution>
-          <execution>
-            <id>histogramtest</id>
-            <phase>test</phase>
-            <goals><goal>java</goal></goals>
-            <configuration>
-              <mainClass>imageproof.HistogramTest</mainClass>
-              <classpathScope>test</classpathScope>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
+      <!-- Add tests/ and tools/ as test code -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
@@ -84,6 +32,29 @@
           </execution>
         </executions>
       </plugin>
+      <!-- Tests are plain main() programs. "mvn test" runs AllTests.
+           Skip them with -Dexec.skip=true (the launchers do this). -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>all-tests</id>
+            <phase>test</phase>
+            <goals><goal>java</goal></goals>
+            <configuration>
+              <mainClass>imageproof.AllTests</mainClass>
+              <classpathScope>test</classpathScope>
+              <systemProperties>
+                <systemProperty><key>java.awt.headless</key><value>true</value></systemProperty>
+                <systemProperty><key>project.dir</key><value>${project.basedir}</value></systemProperty>
+              </systemProperties>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Runnable jar: java -jar target/simple-image-proof-0.1.0.jar -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>

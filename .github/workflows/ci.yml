@@ -1,0 +1,20 @@
+# Runs the tests on every push and pull request with Java 17.
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Run tests
+        run: mvn -B test
+      - name: Run tests from another folder
+        working-directory: ..
+        run: mvn -B -f ${{ github.event.repository.name }}/pom.xml test
