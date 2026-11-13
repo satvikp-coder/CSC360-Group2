@@ -13,6 +13,7 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -35,9 +36,18 @@ public class App implements ActionListener, ChangeListener {
     static final String NOTE = "These are measurements, not a verdict. "
             + "Unusual values do NOT prove an image was edited, and normal values do NOT prove it is authentic.";
 
+    // What the image area shows. The index is used in showView().
+    static final String[] VIEWS = {
+        "Regional variation",
+        "Noise residual variance",
+        "Edge strength (tile mean)",
+        "Edge map (Sobel)"
+    };
+
     JFrame frame = new JFrame("Simple-Image-Proof");
     JButton openButton = new JButton("Open image...");
     JButton analyzeButton = new JButton("Analyze");
+    JComboBox<String> view = new JComboBox<String>(VIEWS);
     JCheckBox showHeat = new JCheckBox("Show heatmap", true);
     JSlider opacity = new JSlider(0, 100, 50);
     JLabel status = new JLabel("Open a PNG or JPEG image.");
@@ -59,6 +69,8 @@ public class App implements ActionListener, ChangeListener {
         openButton.addActionListener(this);
         analyzeButton.addActionListener(this);
         analyzeButton.setEnabled(false);
+        view.addActionListener(this);
+        view.setEnabled(false);
         showHeat.addActionListener(this);
         opacity.addChangeListener(this);
         opacity.setPreferredSize(new Dimension(100, 20));
@@ -67,6 +79,7 @@ public class App implements ActionListener, ChangeListener {
         JPanel top = new JPanel();
         top.add(openButton);
         top.add(analyzeButton);
+        top.add(view);
         top.add(showHeat);
         top.add(new JLabel("Opacity"));
         top.add(opacity);
@@ -99,6 +112,8 @@ public class App implements ActionListener, ChangeListener {
             openImage();
         } else if (e.getSource() == analyzeButton) {
             analyze();
+        } else if (e.getSource() == view) {
+            showView();
         } else if (e.getSource() == showHeat) {
             imagePanel.setShowHeat(showHeat.isSelected());
         }
@@ -136,6 +151,8 @@ public class App implements ActionListener, ChangeListener {
                 + String.format("  Standard deviation: %.2f%n", Histogram.standardDeviation(h))
                 + String.format("  Entropy:            %.3f bits%n", Histogram.entropy(h))
                 + String.format("  Variation (TVD):    %.3f%n", r.variation[row][col])
+                + String.format("  Noise variance:     %.2f%n", analysis.noise[row][col])
+                + String.format("  Edge strength:      %.2f%n", analysis.edges[row][col])
                 + "\n" + resultText(analysis);
         results.setText(text);
         results.setCaretPosition(0);
@@ -167,6 +184,10 @@ public class App implements ActionListener, ChangeListener {
     // Clear everything that belonged to the previous image.
     void clearResults() {
         analysis = null;
+        view.setEnabled(false);
+        imagePanel.setImage(current.image);
+        imagePanel.setHeat(null, 0, "");
+        imagePanel.setSelected(null);
         histogramPanel.setTitle("Gray histogram (whole image)");
         histogramPanel.setValues(null);
         results.setText(NOTE);
@@ -182,9 +203,30 @@ public class App implements ActionListener, ChangeListener {
         histogramPanel.setTitle("Gray histogram (whole image)");
         histogramPanel.setValues(a.histogram);
         imagePanel.setSelected(null);
-        imagePanel.setHeat(a.regions.variation, a.regions.tileSize, "Regional variation (TVD to neighbour tiles)");
+        view.setEnabled(true);
+        showView();
         results.setText("Click a tile on the image to inspect it.\n\n" + resultText(a));
         results.setCaretPosition(0);
+    }
+
+    // Put the chosen measurement on the image.
+    void showView() {
+        if (analysis == null) {
+            return;
+        }
+        int size = analysis.regions.tileSize;
+        int choice = view.getSelectedIndex();
+        imagePanel.setImage(current.image);
+        if (choice == 0) {
+            imagePanel.setHeat(analysis.regions.variation, size, "Regional variation (TVD to neighbour tiles)");
+        } else if (choice == 1) {
+            imagePanel.setHeat(analysis.noise, size, "Noise residual variance per tile");
+        } else if (choice == 2) {
+            imagePanel.setHeat(analysis.edges, size, "Mean Sobel edge strength per tile");
+        } else if (choice == 3) {
+            imagePanel.setImage(analysis.edgeMap);
+            imagePanel.setHeat(null, 0, "");
+        }
     }
 
     String resultText(Analysis a) {
@@ -196,17 +238,23 @@ public class App implements ActionListener, ChangeListener {
                 + String.format("  Entropy:            %.3f bits (0 to 8)%n", a.entropy)
                 + "\nRegional variation, " + r.rows + " x " + r.cols + " tiles of " + r.tileSize + " px\n"
                 + "(average TVD to the tiles above, below, left, right; 0 = same, 1 = no overlap)\n"
-                + grid(r.variation)
+                + grid(r.variation, "%6.3f")
+                + "\nNoise residual variance per tile\n"
+                + "(gray minus 3 x 3 local mean; texture and edges also raise it)\n"
+                + grid(a.noise, "%8.2f")
+                + "\nMean Sobel edge strength per tile (0 to " + Math.round(Edges.MAX_STRENGTH) + ")\n"
+                + "(normal object outlines are strong edges)\n"
+                + grid(a.edges, "%8.2f")
                 + "\n" + NOTE;
         return text;
     }
 
     // Numbers of a grid, one line per row.
-    static String grid(double[][] values) {
+    static String grid(double[][] values, String format) {
         StringBuilder text = new StringBuilder();
         for (int row = 0; row < values.length; row++) {
             for (int col = 0; col < values[row].length; col++) {
-                text.append(String.format("%6.3f", values[row][col]));
+                text.append(String.format(format, values[row][col]));
             }
             text.append("\n");
         }

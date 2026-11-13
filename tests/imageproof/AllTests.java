@@ -10,6 +10,7 @@ public class AllTests {
         AnalysisTest.main(args);
         HistogramPanelTest.main(args);
         RegionsTest.main(args);
+        NoiseEdgesTest.main(args);
         ImagePanelTest.main(args);
         DatasetTest.main(args);
         System.out.println("All tests passed");
