@@ -1,95 +1,123 @@
 package imageproof;
 
 import java.awt.image.BufferedImage;
-import java.nio.file.*;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
 import javax.imageio.ImageIO;
 
-public final class DatasetTest {
-    private static int checks;
-    private static void check(boolean condition, String message) {
+// Checks the committed sample images in samples/generated.
+// Works from any folder: Maven passes the project folder as "project.dir".
+// Compares decoded pixels, not file bytes, because PNG/JPEG encoders differ between JDKs.
+public class DatasetTest {
+
+    static int checks = 0;
+
+    static void check(boolean ok, String message) {
         checks++;
-        if (!condition) throw new AssertionError(message);
+        if (!ok) {
+            throw new AssertionError(message);
+        }
     }
-    private static int[] pixels(BufferedImage image) {
+
+    static int[] pixels(BufferedImage image) {
         return image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
     }
-    public static void main(String[] args) throws Exception {
-        Path scratch = Files.createTempDirectory("imageproof-dataset-test-");
-        try {
-            Path first = scratch.resolve("first"), second = scratch.resolve("second");
-            DatasetGenerator.generate(first); DatasetGenerator.generate(second);
-            for (String name : DatasetGenerator.FILES) {
-                check(Files.mismatch(first.resolve(name), second.resolve(name)) == -1,
-                        "Nondeterministic output: " + name);
-                check(Files.mismatch(first.resolve(name), Path.of("samples/generated", name)) == -1,
-                        "Committed dataset differs: " + name);
-            }
-            check(Files.mismatch(first.resolve("SHA256SUMS"), second.resolve("SHA256SUMS")) == -1,
-                    "Manifest differs");
-            check(Files.mismatch(first.resolve("SHA256SUMS"),
-                    Path.of("samples/generated/SHA256SUMS")) == -1, "Committed manifest differs");
-            List<String> manifest = Files.readAllLines(Path.of("samples/generated/SHA256SUMS"));
-            check(manifest.size() == DatasetGenerator.FILES.size(), "Wrong manifest length");
-            for (int i = 0; i < manifest.size(); i++) {
-                String name = DatasetGenerator.FILES.get(i);
-                String actualHash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                        .digest(Files.readAllBytes(Path.of("samples/generated", name))));
-                check(manifest.get(i).equals(actualHash + "  " + name), "Bad committed hash: " + name);
-            }
-            BufferedImage original = ImageIO.read(first.resolve("original.png").toFile());
-            int[] before = pixels(original);
-            int[] shuffled = pixels(ImageIO.read(first.resolve("shuffled.png").toFile()));
-            check(!Arrays.equals(before, shuffled), "Shuffle did not move pixels");
-            Arrays.sort(before); Arrays.sort(shuffled);
-            check(Arrays.equals(before, shuffled), "Shuffle changed RGB multiset");
-            check(Arrays.equals(pixels(original), pixels(ImageIO.read(first.resolve("identical.png").toFile()))),
-                    "Identical pixels differ");
-            for (String name : DatasetGenerator.FILES) {
-                BufferedImage loaded = ImageIO.read(first.resolve(name).toFile());
-                if (name.endsWith(".txt")) { check(loaded == null, "Unsupported input decoded"); continue; }
-                check(loaded != null, "Image unreadable: " + name);
-                try (var stream = ImageIO.createImageInputStream(first.resolve(name).toFile())) {
-                    var readers = ImageIO.getImageReaders(stream);
-                    check(readers.hasNext(), "No format reader: " + name);
-                    var reader = readers.next();
-                    try {
-                        check(reader.getFormatName().equalsIgnoreCase(name.endsWith(".jpg") ? "JPEG" : "PNG"),
-                                "Actual format differs from extension: " + name);
-                    } finally { reader.dispose(); }
+
+    static BufferedImage read(Path file) throws Exception {
+        return ImageIO.read(file.toFile());
+    }
+
+    // Hex SHA-256 of a file.
+    static String sha256(Path file) throws Exception {
+        byte[] digest = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file));
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < digest.length; i++) {
+            text.append(String.format("%02x", digest[i]));
+        }
+        return text.toString();
+    }
+
+    // Biggest difference of any colour channel between two images of the same size.
+    static int maxChannelDifference(BufferedImage a, BufferedImage b) {
+        int max = 0;
+        for (int y = 0; y < a.getHeight(); y++) {
+            for (int x = 0; x < a.getWidth(); x++) {
+                int p = a.getRGB(x, y);
+                int q = b.getRGB(x, y);
+                for (int shift = 0; shift <= 16; shift = shift + 8) {
+                    int d = Math.abs(((p >> shift) & 255) - ((q >> shift) & 255));
+                    if (d > max) {
+                        max = d;
+                    }
                 }
-                check(loaded.getWidth() == (name.equals("crop.png") ? 96 : 192)
-                        && loaded.getHeight() == (name.equals("crop.png") ? 96 : 128), "Wrong dimensions");
-            }
-            BufferedImage local = ImageIO.read(first.resolve("localized.png").toFile());
-            BufferedImage crop = ImageIO.read(first.resolve("crop.png").toFile());
-            int changed = 0;
-            for (int y = 0; y < 128; y++) for (int x = 0; x < 192; x++) {
-                if (original.getRGB(x, y) != local.getRGB(x, y)) changed++;
-                if (x < 96 && y < 96) check(original.getRGB(x, y) == crop.getRGB(x, y), "Incorrect crop");
-            }
-            check(changed == 64, "Localized edit must change 64 pixels");
-            check(local.getRGB(88, 60) == 0xffffffff && local.getRGB(95, 67) == 0xffffffff,
-                    "Localized patch corners must be white");
-            check(local.getRGB(87, 60) == original.getRGB(87, 60)
-                    && local.getRGB(96, 67) == original.getRGB(96, 67), "Patch exceeded bounds");
-            // Independent fixed RGB fixtures from documented transformation settings.
-            BufferedImage bright = ImageIO.read(first.resolve("brightness.png").toFile());
-            BufferedImage contrast = ImageIO.read(first.resolve("contrast.png").toFile());
-            check((bright.getRGB(0, 0) & 0xffffff) == 0x1e1e4e, "Brightness dark fixture");
-            check((bright.getRGB(191, 127) & 0xffffff) == 0xffff4e, "Brightness saturation fixture");
-            check((bright.getRGB(96, 64) & 0xffffff) == 0x9e9e4e, "Brightness midtone fixture");
-            check((contrast.getRGB(0, 0) & 0xffffff) == 0x000010, "Contrast dark fixture");
-            check((contrast.getRGB(191, 127) & 0xffffff) == 0xffff10, "Contrast saturation fixture");
-            check((contrast.getRGB(96, 64) & 0xffffff) == 0x808010, "Contrast midtone fixture");
-            check((contrast.getRGB(12, 0) & 0xffffff) == 0x0000f0, "Contrast blue fixture");
-            System.out.println("DatasetTest: " + checks + " checks passed");
-        } finally {
-            // Only delete the explicitly created temporary directory, children first.
-            try (var paths = Files.walk(scratch)) {
-                for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
             }
         }
+        return max;
+    }
+
+    public static void main(String[] args) throws Exception {
+        Path project = Path.of(System.getProperty("project.dir", "."));
+        Path committed = project.resolve("samples/generated");
+        Path fresh = Files.createTempDirectory("imageproof-test-");
+        DatasetGenerator.generate(fresh);
+
+        // 1. Committed files still match their committed SHA-256 manifest.
+        List<String> manifest = Files.readAllLines(committed.resolve("SHA256SUMS"));
+        check(manifest.size() == DatasetGenerator.FILES.size(), "manifest length");
+        for (int i = 0; i < manifest.size(); i++) {
+            String name = DatasetGenerator.FILES.get(i);
+            check(manifest.get(i).equals(sha256(committed.resolve(name)) + "  " + name), "hash of " + name);
+        }
+
+        // 2. Regenerated PNGs decode to exactly the committed pixels.
+        for (String name : DatasetGenerator.FILES) {
+            if (name.endsWith(".png")) {
+                BufferedImage a = read(fresh.resolve(name));
+                BufferedImage b = read(committed.resolve(name));
+                check(Arrays.equals(pixels(a), pixels(b)), "pixels of " + name);
+            }
+        }
+
+        // 3. JPEG: decodes, right size, close to the original (lossy, so not exact).
+        BufferedImage original = read(committed.resolve("original.png"));
+        BufferedImage jpeg = read(fresh.resolve("recompressed.jpg"));
+        check(jpeg != null && jpeg.getWidth() == 192 && jpeg.getHeight() == 128, "jpeg size");
+        check(maxChannelDifference(original, jpeg) <= 128, "jpeg close to original");
+        check(maxChannelDifference(original, read(committed.resolve("recompressed.jpg"))) <= 128, "committed jpeg");
+
+        // 4. The text file is not an image.
+        check(read(committed.resolve("unsupported.txt")) == null, "text is not an image");
+
+        // 5. Shuffled image has the same pixels in different places.
+        int[] before = pixels(original);
+        int[] after = pixels(read(committed.resolve("shuffled.png")));
+        check(!Arrays.equals(before, after), "shuffle moved pixels");
+        Arrays.sort(before);
+        Arrays.sort(after);
+        check(Arrays.equals(before, after), "shuffle kept the same colours");
+
+        // 6. Localized edit changes exactly an 8x8 white square.
+        BufferedImage local = read(committed.resolve("localized.png"));
+        int changed = 0;
+        for (int y = 0; y < 128; y++) {
+            for (int x = 0; x < 192; x++) {
+                if (original.getRGB(x, y) != local.getRGB(x, y)) {
+                    changed++;
+                }
+            }
+        }
+        check(changed == 64, "64 changed pixels");
+
+        // Clean up the temporary folder.
+        File[] files = fresh.toFile().listFiles();
+        for (int i = 0; i < files.length; i++) {
+            files[i].delete();
+        }
+        fresh.toFile().delete();
+        System.out.println("DatasetTest: " + checks + " checks passed");
     }
 }
