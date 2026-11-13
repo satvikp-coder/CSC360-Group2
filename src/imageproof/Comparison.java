@@ -1,36 +1,43 @@
 package imageproof;
 
-/** Total variation distance between two normalized 256-bin distributions. No Swing, no threshold. */
-public final class Comparison {
-    public static final int BINS = 256;
-    /** Allowed deviation of a distribution's sum from 1 (counts/total in doubles). */
+// Total variation distance (TVD) between two normalized histograms.
+// TVD = 0.5 * sum(|p[i] - q[i]|)
+// 0 = same distribution, 1 = no overlap at all.
+// It is NOT the percentage of edited pixels.
+public class Comparison {
+
+    // How far the sum of a histogram may be from 1 (rounding error).
     public static final double TOLERANCE = 1e-9;
 
-    private Comparison() {}
-
-    /**
-     * Returns 0.5 * sum|p[i]-q[i]|, in [0, 1]. This is NOT a percentage of edited pixels.
-     * @throws IllegalArgumentException if an array is null, not length 256, has a
-     *         NaN/infinite/negative value, or does not sum to 1 within {@link #TOLERANCE}.
-     */
     public static double difference(double[] p, double[] q) {
-        validate(p, "p");
-        validate(q, "q");
+        check(p);
+        check(q);
         double sum = 0;
-        for (int i = 0; i < BINS; i++) sum += Math.abs(p[i] - q[i]);
-        return Math.min(1.0, Math.max(0.0, 0.5 * sum)); // clamp rounding noise
+        for (int i = 0; i < Histogram.BINS; i++) {
+            sum = sum + Math.abs(p[i] - q[i]);
+        }
+        double tvd = 0.5 * sum;
+        // Keep the answer inside 0..1 even with tiny rounding errors.
+        if (tvd > 1) {
+            tvd = 1;
+        }
+        return tvd;
     }
 
-    private static void validate(double[] d, String name) {
-        if (d == null) throw new IllegalArgumentException(name + " is null");
-        if (d.length != BINS) throw new IllegalArgumentException(name + " must have " + BINS + " bins, got " + d.length);
-        double total = 0;
-        for (int i = 0; i < BINS; i++) {
-            if (!Double.isFinite(d[i]) || d[i] < 0)
-                throw new IllegalArgumentException(name + "[" + i + "] must be finite and >= 0, got " + d[i]);
-            total += d[i];
+    // A valid histogram has 256 finite, non-negative values that add up to 1.
+    private static void check(double[] p) {
+        if (p == null || p.length != Histogram.BINS) {
+            throw new IllegalArgumentException("Need 256 bins");
         }
-        if (Math.abs(total - 1.0) > TOLERANCE)
-            throw new IllegalArgumentException(name + " must sum to 1 (+/-" + TOLERANCE + "), got " + total);
+        double total = 0;
+        for (int i = 0; i < p.length; i++) {
+            if (Double.isNaN(p[i]) || Double.isInfinite(p[i]) || p[i] < 0) {
+                throw new IllegalArgumentException("Bad bin value at " + i);
+            }
+            total = total + p[i];
+        }
+        if (Math.abs(total - 1) > TOLERANCE) {
+            throw new IllegalArgumentException("Bins must add up to 1");
+        }
     }
 }
