@@ -16,6 +16,7 @@ public class Analysis {
     public double[][] noise;      // residual variance per tile
     public double[][] edges;      // mean Sobel strength per tile
     public BufferedImage edgeMap; // Sobel strength as a gray picture
+    public CopyMove copyMove;     // copy-move candidates
 
     public static Analysis run(BufferedImage image) {
         Analysis a = new Analysis();
@@ -30,6 +31,7 @@ public class Analysis {
         a.noise = Noise.tileVariance(a.gray, a.regions);
         a.edges = Edges.tileStrength(a.gray, a.regions);
         a.edgeMap = Edges.map(a.gray);
+        a.copyMove = CopyMove.analyze(a.gray);
         return a;
     }
 }
