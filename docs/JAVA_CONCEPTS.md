@@ -1,55 +1,43 @@
-# Java Concepts Needed — Simple-Image-Proof
+# Java Concepts Used — Simple-Image-Proof
 
-Only what the 4 classes actually use. Grouped by where you'll meet it.
+Only what the code actually uses. The code avoids lambdas, streams, records and the `? :` operator so it reads like textbook Java.
 
-## 1. Core Java (used everywhere)
-| Concept | Where in project |
-|---|---|
-| Classes, `static` methods & constants | `Histogram`, `Comparison` are all-static helpers; `THRESHOLD` is `static final` |
-| Packages (`package imageproof;`) & `import` | Top of every file |
-| Arrays: `int[]`, `double[]`, indexing | `hist[gray]++`, 256-bin arrays |
-| Nested `for` loops | Walk every pixel: `for y … for x …` |
-| `int` vs `double`, casting | `(double) count / total` — **without the cast, int division gives 0** |
-| `Math.round`, `Math.abs` | Gray value rounding; `|p − q|` |
-| `if` / boolean return | `isEdited(score)` |
-
-## 2. Images (`java.awt.image`, `javax.imageio`)
+## 1. Core Java
 | Concept | Where |
 |---|---|
-| `BufferedImage`, `getWidth()`, `getHeight()`, `getRGB(x, y)` | Reading pixels in `Histogram.compute` |
-| `java.awt.Color` → `getRed()`, `getGreen()`, `getBlue()` | Splitting a pixel into R, G, B (avoids bit-shifting) |
-| `ImageIO.read(File)` | Loading PNG/JPG/BMP; returns `null` if format unsupported |
+| Classes, `static` methods, `static final` constants | `Histogram`, `Comparison`, `Noise`, `Edges` |
+| Objects with public fields | `Analysis`, `Regions`, `LoadedImage`, `CopyMove.Match` |
+| 1D / 2D / 3D arrays | `int[256]` counts, `gray[y][x]`, `histograms[row][col][bin]` |
+| Nested `for` loops | walking pixels and tiles |
+| Casting `(double) count / total` | without it, int division gives 0 |
+| `long` to avoid overflow | `(long) width * height` |
+| `Math.round`, `Math.abs`, `Math.sqrt`, `Math.log` | gray value, TVD, Sobel, entropy |
+| Exceptions: `throw new IllegalArgumentException`, `try`/`catch`/`finally`, `IOException` | invalid input, bad files |
+| Static nested class | `CopyMove.Match` |
+| `ArrayList`, `HashMap` | copy-move blocks and groups by shift |
+| Bit operations `(argb >> 16) & 255` | splitting a pixel into A, R, G, B |
 
-## 3. Errors
+## 2. Images
 | Concept | Where |
 |---|---|
-| `try` / `catch (IOException e)` | File can't be read |
-| `null` check | `ImageIO.read` returned `null` → not an image |
-| `JOptionPane.showMessageDialog` | Show the error to the user |
+| `BufferedImage`, `getRGB(x, y, w, 1, row, 0, w)` | reading a row of colour pixels |
+| `Raster.getSample` | reading gray images exactly |
+| `ImageIO`, `ImageReader`, `ImageInputStream` | real format check and loading |
+| Writing PNG/JPEG | `SampleGenerator` |
 
-## 4. Swing GUI (`javax.swing`)
+## 3. Swing
 | Concept | Where |
 |---|---|
-| `JFrame`, `JPanel`, `JButton`, `JLabel` | The window and its parts |
-| Layout managers: `BorderLayout`, `GridLayout` | Arranging buttons / images / panels |
-| `JFileChooser` | "Load Original" / "Load Suspect" |
-| Event listeners with lambdas: `button.addActionListener(e -> compare())` | Button clicks |
-| `ImageIcon` in a `JLabel` | Showing image previews |
-| `SwingUtilities.invokeLater(...)` | Starting the GUI safely in `main` |
+| `JFrame`, `JPanel`, `JButton`, `JLabel`, `JComboBox`, `JCheckBox`, `JSlider`, `JTextArea` | `App` |
+| `BorderLayout`, `GridLayout` | window layout |
+| `ActionListener`, `ChangeListener`, `MouseAdapter` | buttons, slider, clicks |
+| `extends JPanel` + `paintComponent(Graphics g)` | `ImagePanel`, `HistogramPanel` |
+| `SwingWorker` (`doInBackground`, `done`) | loading and analysing off the Swing thread |
+| `SwingUtilities.invokeLater` | starting the GUI |
+| Inner classes | `LoadWorker`, `AnalyzeWorker`, `ClickHandler` |
 
-## 5. Custom drawing (`java.awt.Graphics`)
+## 4. Build
 | Concept | Where |
 |---|---|
-| Inheritance: `class HistogramPanel extends JPanel` | Custom panel |
-| Overriding `paintComponent(Graphics g)` + `super.paintComponent(g)` | Drawing the bars |
-| `g.fillRect(x, y, w, h)`, `g.setColor(...)` | One rectangle per bin |
-| Screen y-axis points **down** | Bar top = `panelHeight − barHeight` |
-| `repaint()` | Redraw after new data via `setValues` |
-
-## 6. Optional
-| Concept | Where |
-|---|---|
-| JUnit 5 `@Test`, `assertEquals(expected, actual, delta)` | Check: image vs itself → score 0 |
-| `javac -d out` / `java -cp out` | Compile & run without an IDE |
-
-**Not needed:** generics, collections, streams, threads, interfaces, external libraries.
+| Maven `pom.xml`, `mvn test`, `mvn package` | build and tests |
+| Tests as `main` methods that throw `AssertionError` | `tests/imageproof` |

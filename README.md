@@ -4,109 +4,86 @@
 
 > **Assigned topic:** "Simple-Image-Proof: Simple check of Image Edits using a basic Histogram technique."
 
-## Overview
+## What it does
 
-Simple-Image-Proof is a student project exploring a basic way to **compare images using their intensity/color histograms**. The goal is to show how a histogram-based comparison can highlight changes between a reference image and a second image that may have been edited.
+Open **one** PNG or JPEG image and press **Analyze**. The program measures:
 
-This is an **educational image-comparison tool**, not a forensic authentication system. A different histogram can suggest that an image has changed, but it cannot establish *why* it changed or prove deliberate manipulation. An edit can also leave the histogram almost unchanged.
+| Measurement | What it is |
+| --- | --- |
+| Global histogram | 256 bins of gray values, `gray = round(0.299 R + 0.587 G + 0.114 B)`, plus mean, standard deviation and entropy |
+| Regional variation | Image split into 64 x 64 tiles. Each tile's histogram is compared with its 4 neighbours using total variation distance `TVD = 0.5 * sum(abs(p[i] - q[i]))` |
+| Noise residual | Gray value minus the 3 x 3 local mean; variance per tile |
+| Sobel edges | Edge strength `sqrt(gx² + gy²)` per pixel, mean per tile, and an edge map |
+| Copy-move candidates | Exact 16 x 16 textured blocks that appear twice, far apart, with the same shift |
 
-**Current status:** Project planning and documentation. The image-analysis application has **not been implemented yet**.
+Results are shown as a heatmap on the image, a histogram and numbers. Click a tile to see its own histogram and values.
 
-Issue #5 adds reproducible synthetic sample images, a Java 17 dataset generator
-and dependency-free tests. See [evaluation and reproduction commands](docs/EVALUATION.md).
-Measured scores remain blocked until the histogram and comparison components
-are available; no classification threshold has been validated.
+![Regional variation with a selected tile](docs/images/app-tile.png)
 
-Issue #4 adds a standalone Swing histogram panel and dependency-free headless
-tests. See [panel setup and integration contract](docs/HISTOGRAM_PANEL.md) for
-Java 17 build commands and verification status. The full application is pending.
+![Copy-move candidates on the copied sample](docs/images/app-copy-move.png)
 
-## Project objectives
+**This is an educational tool, not a forensic verdict.** Unusual numbers do not prove an image was edited, and normal numbers do not prove it is authentic. Object edges, texture, brightness changes, compression and repeated patterns all change these values. There is no threshold, probability or "edited / not edited" answer.
 
-- Read a reference image and a comparison image.
-- Calculate and visualize basic grayscale histograms (optionally RGB histograms).
-- Normalize histogram counts so images with different pixel counts can be compared.
-- Compute a simple, explainable histogram-difference score.
-- Display the histograms and comparison result in a clear, beginner-friendly way.
-- Evaluate the method using original images and intentionally modified test images.
+## Setup
 
-## Proposed method
-
-1. **Select images:** Provide a reference image and an image to check.
-2. **Load and validate:** Confirm both files can be read and identify their dimensions and formats.
-3. **Calculate histograms:** Convert to grayscale and count pixels for each intensity value (0–255).
-4. **Normalize:** Divide each histogram bin by the total pixel count.
-5. **Compare:** Use normalized histogram distance to measure the difference.
-6. **Report:** Show histogram plots and a numeric score, with a cautious interpretation.
-
-A straightforward proposed metric is **total variation distance**:
-
-```text
-difference = 0.5 * sum(abs(reference_bin[i] - comparison_bin[i]))
-             for i = 0..255
-```
-
-Here, `reference_bin` and `comparison_bin` are **normalized** histogram frequencies. The difference lies between **0** (same distribution) and **1** (no overlapping distribution). It does **not** measure the percentage of pixels edited.
-
-No detection threshold has been selected yet; any threshold will need to be tested against representative examples.
-
-## Expected output
-
-When implemented, the project should show:
-
-- A visual comparison of original and comparison histograms.
-- A histogram-difference value.
-- An explanation of whether the distributions are similar or different.
-- An important note that the result alone **does not verify image authenticity**.
-
-## Limitations
-
-- Histograms discard pixel positions: two visibly different images can have the same histogram.
-- Brightness, contrast, resizing, cropping, and compression can affect results without malicious editing.
-- Small localized edits may be difficult to detect using a global histogram.
-- Without a trusted reference image, a single histogram cannot reliably determine whether an image has been edited.
-
-## Planned milestones
-
-| Stage | Goal | Status |
-| --- | --- | --- |
-| 1 | Define the method, scope, and test plan | In planning |
-| 2 | Implement image loading and histogram generation | Not started |
-| 3 | Add histogram comparison and visual results | Not started |
-| 4 | Test original vs. edited examples | Not started |
-| 5 | Document findings and prepare demonstration | Not started |
-
-See [Project Plan](docs/PROJECT_PLAN.md) for the proposed scope, acceptance criteria, and test cases.
-
-## Technology and setup
-
-Java 17+ with Swing and Maven. **No third-party libraries.** Sources live in `src/imageproof/`, tests in `tests/imageproof/`.
-
-Needs **JDK 17+** and **Maven**. No IDE needed.
+Needs **JDK 17+** and **Maven**. No IDE and no extra libraries.
 
 ```bash
-mvn test                                   # runs all tests (headless, fails the build on any error)
-mvn package -Dexec.skip=true               # builds target/simple-image-proof-0.1.0.jar without tests
+./launcher.sh
+```
+
+On Windows run `launcher.bat`. The launcher checks Java 17+ and Maven, rebuilds what changed, skips tests and starts the app.
+
+Manual commands:
+
+```bash
+mvn test
+```
+
+```bash
+mvn package -Dexec.skip=true
+```
+
+```bash
 java -jar target/simple-image-proof-0.1.0.jar
 ```
 
-Or run `./launcher.sh` (macOS/Linux) or `launcher.bat` (Windows). The launcher checks Java 17+ and Maven, rebuilds what changed, skips tests and starts the app. `mvn test` also works from another folder (`mvn -f path/to/pom.xml test`). GitHub Actions runs `mvn test` on Java 17 (Ubuntu and Windows) for every push and pull request.
+`mvn test` runs every test headless (no window needed) and fails the build on any error. It also works from another folder (`mvn -f path/to/pom.xml test`). GitHub Actions runs it on Java 17 (Ubuntu and Windows) for every push and pull request.
 
-Usage: press **Load reference…** and **Load comparison…**, choose two images (PNG/JPG/GIF/BMP, sizes may differ), then press **Compare**. Changing either image clears the previous result. Unreadable or non-image files show an error and keep the current inputs.
+## Usage
 
-Tested so far: `Comparison` (identical = 0, disjoint = 1, hand-calculated 0.5, symmetry, invalid inputs) and basic histogram normalization. The Swing workflow still needs recorded manual end-to-end testing.
+1. **Open image...** and pick a PNG or JPEG (up to 16 megapixels).
+2. **Analyze**. Work runs in the background, the window stays responsive.
+3. Choose a view: Regional variation, Noise residual variance, Edge strength, Edge map, Copy-move candidates.
+4. Use **Show heatmap** and **Opacity** to see the image under the colours.
+5. Click a tile to see its pixel range, histogram, mean, deviation, entropy, variation, noise and edge values.
+
+Cancelling the file chooser keeps the current image. A broken or unsupported file shows an error and keeps the current image. Opening a new image clears the old results.
+
+## Samples and results
+
+`samples/` holds 12 synthetic files made by [`SampleGenerator`](tools/imageproof/SampleGenerator.java) (no outside photos): original, copied object (PNG and JPEG), inserted object, brightness, blur, shuffled pixels, repeated pattern, grayscale, transparent, corrupt and a text file. Measured results: [docs/EVALUATION.md](docs/EVALUATION.md) and [docs/RESULTS.csv](docs/RESULTS.csv).
+
+## Code
+
+| Class | Job |
+| --- | --- |
+| `Histogram` | gray values (gray images and transparency handled), counts, normalize, mean, std, entropy |
+| `Comparison` | total variation distance |
+| `Regions` | tiles, tile histograms, neighbour variation |
+| `Noise`, `Edges`, `CopyMove` | the three diagnostics |
+| `Analysis` | runs everything for one image |
+| `LoadedImage` | reads a PNG/JPEG with clear errors |
+| `App`, `ImagePanel`, `HistogramPanel` | the Swing window |
+
+More: [Architecture](docs/ARCHITECTURE.md), [Manual test](docs/MANUAL_TEST.md), [Java concepts](docs/JAVA_CONCEPTS.md), [Project plan](docs/PROJECT_PLAN.md).
+
+## Limitations
+
+- Histograms ignore pixel positions: `shuffled.png` has exactly the same global histogram as the original.
+- Normal edges and texture give high variation, noise and edge values.
+- Copy-move only finds exact copies moved by a multiple of 8 px, no rotation or scaling. Repeated patterns give false candidates. Big images are only partly searched (limit shown on screen).
 
 ## Team
 
-**CSC360 — Group 2**
-
-- Satvik Patel
-- Varun
-- Garv
-- Shambhavee
-
-**Topic assigned by:** Dhruvee Sheth
-
-## Academic note
-
-This repository is for the CSC360 end-semester group project. The histogram method will be presented together with its limitations; the team will not present a statistical difference as conclusive proof of image tampering.
+**CSC360 — Group 2**: Satvik Patel, Varun, Garv, Shambhavee. **Topic assigned by:** Dhruvee Sheth.

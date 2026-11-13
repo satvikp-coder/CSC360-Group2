@@ -1,3 +1,4 @@
-# Preserve byte-exact generated text on Windows and Unix checkouts.
-samples/generated/SHA256SUMS text eol=lf
-samples/generated/unsupported.txt text eol=lf
+# Sample images are binary; keep the text sample with LF endings.
+samples/*.png binary
+samples/*.jpg binary
+samples/unsupported.txt text eol=lf
