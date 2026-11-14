@@ -11,6 +11,7 @@ public class AllTests {
         HistogramPanelTest.main(args);
         RegionsTest.main(args);
         NoiseEdgesTest.main(args);
+        CopyMoveTest.main(args);
         ImagePanelTest.main(args);
         DatasetTest.main(args);
         System.out.println("All tests passed");

@@ -41,7 +41,8 @@ public class App implements ActionListener, ChangeListener {
         "Regional variation",
         "Noise residual variance",
         "Edge strength (tile mean)",
-        "Edge map (Sobel)"
+        "Edge map (Sobel)",
+        "Copy-move candidates"
     };
 
     JFrame frame = new JFrame("Simple-Image-Proof");
@@ -187,6 +188,7 @@ public class App implements ActionListener, ChangeListener {
         view.setEnabled(false);
         imagePanel.setImage(current.image);
         imagePanel.setHeat(null, 0, "");
+        imagePanel.setPairs(null);
         imagePanel.setSelected(null);
         histogramPanel.setTitle("Gray histogram (whole image)");
         histogramPanel.setValues(null);
@@ -217,6 +219,7 @@ public class App implements ActionListener, ChangeListener {
         int size = analysis.regions.tileSize;
         int choice = view.getSelectedIndex();
         imagePanel.setImage(current.image);
+        imagePanel.setPairs(null);
         if (choice == 0) {
             imagePanel.setHeat(analysis.regions.variation, size, "Regional variation (TVD to neighbour tiles)");
         } else if (choice == 1) {
@@ -226,6 +229,9 @@ public class App implements ActionListener, ChangeListener {
         } else if (choice == 3) {
             imagePanel.setImage(analysis.edgeMap);
             imagePanel.setHeat(null, 0, "");
+        } else if (choice == 4) {
+            imagePanel.setHeat(null, 0, "");
+            imagePanel.setPairs(analysis.copyMove.matches);
         }
     }
 
@@ -245,7 +251,29 @@ public class App implements ActionListener, ChangeListener {
                 + "\nMean Sobel edge strength per tile (0 to " + Math.round(Edges.MAX_STRENGTH) + ")\n"
                 + "(normal object outlines are strong edges)\n"
                 + grid(a.edges, "%8.2f")
+                + "\n" + copyMoveText(a.copyMove)
                 + "\n" + NOTE;
+        return text;
+    }
+
+    static String copyMoveText(CopyMove c) {
+        String text = "Copy-move candidates (exact 16 x 16 blocks, same shift at least "
+                + CopyMove.MIN_GROUP + " times)\n"
+                + "  Blocks checked: " + c.blocksChecked + ", comparisons: " + c.comparisons + "\n"
+                + "  Candidate pairs: " + c.matches.size() + "\n";
+        if (c.truncated) {
+            text = text + "  LIMIT REACHED: only part of the image was searched (limits "
+                    + CopyMove.MAX_BLOCKS + " blocks, " + CopyMove.MAX_COMPARISONS + " comparisons, "
+                    + CopyMove.MAX_MATCHES + " pairs shown).\n";
+        }
+        for (int i = 0; i < c.matches.size() && i < 10; i++) {
+            CopyMove.Match m = c.matches.get(i);
+            text = text + "  (" + m.x1 + ", " + m.y1 + ") = (" + m.x2 + ", " + m.y2 + ")\n";
+        }
+        if (c.matches.size() > 10) {
+            text = text + "  ... " + (c.matches.size() - 10) + " more\n";
+        }
+        text = text + "  Repeated patterns also match. No candidates does not mean authentic.\n";
         return text;
     }
 

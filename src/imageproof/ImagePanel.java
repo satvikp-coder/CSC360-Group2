@@ -6,6 +6,7 @@ import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import javax.swing.JPanel;
 
 // Shows an image scaled to fit the panel, keeping its shape (empty bars at the sides).
@@ -19,6 +20,7 @@ public class ImagePanel extends JPanel {
     private int opacity = 50;     // percent, 0 to 100
     private boolean showHeat = true;
     private Rectangle selected;   // selected tile in image pixels, null = none
+    private ArrayList<CopyMove.Match> pairs; // copy-move candidates, null = none
 
     public ImagePanel() {
         setBackground(Color.LIGHT_GRAY);
@@ -46,6 +48,12 @@ public class ImagePanel extends JPanel {
 
     public void setShowHeat(boolean show) {
         showHeat = show;
+        repaint();
+    }
+
+    // Copy-move candidates to outline. null removes them.
+    public void setPairs(ArrayList<CopyMove.Match> pairs) {
+        this.pairs = pairs;
         repaint();
     }
 
@@ -117,6 +125,9 @@ public class ImagePanel extends JPanel {
             drawHeat(g);
             drawLegend(g);
         }
+        if (pairs != null) {
+            drawPairs(g);
+        }
         if (selected != null) {
             Rectangle s = toPanel(selected);
             g.setColor(Color.BLUE);
@@ -145,6 +156,22 @@ public class ImagePanel extends JPanel {
                 g.setColor(heatColor(value));
                 g.fillRect(r.x, r.y, r.width, r.height);
             }
+        }
+    }
+
+    // First block green, its copy magenta, joined by a line.
+    private void drawPairs(Graphics g) {
+        int b = CopyMove.BLOCK;
+        for (int i = 0; i < pairs.size(); i++) {
+            CopyMove.Match m = pairs.get(i);
+            Rectangle first = toPanel(new Rectangle(m.x1, m.y1, b, b));
+            Rectangle second = toPanel(new Rectangle(m.x2, m.y2, b, b));
+            g.setColor(Color.GREEN);
+            g.drawRect(first.x, first.y, first.width, first.height);
+            g.setColor(Color.MAGENTA);
+            g.drawRect(second.x, second.y, second.width, second.height);
+            g.drawLine(first.x + first.width / 2, first.y + first.height / 2,
+                    second.x + second.width / 2, second.y + second.height / 2);
         }
     }
 
