@@ -9,6 +9,8 @@ public class AllTests {
         ComparisonTest.main(args);
         AnalysisTest.main(args);
         HistogramPanelTest.main(args);
+        RegionsTest.main(args);
+        ImagePanelTest.main(args);
         DatasetTest.main(args);
         System.out.println("All tests passed");
     }
