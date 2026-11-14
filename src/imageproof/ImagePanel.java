@@ -25,13 +25,13 @@ public class ImagePanel extends JPanel {
         setPreferredSize(new Dimension(500, 400));
     }
 
+    // Change the picture only; the heatmap and selection stay.
     public void setImage(BufferedImage image) {
         this.image = image;
-        heat = null;
-        selected = null;
         repaint();
     }
 
+    // values = null removes the heatmap.
     public void setHeat(double[][] values, int tileSize, String name) {
         this.heat = values;
         this.tileSize = tileSize;

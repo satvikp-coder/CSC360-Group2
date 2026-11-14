@@ -13,6 +13,9 @@ public class Analysis {
     public double standardDeviation;
     public double entropy;
     public Regions regions;
+    public double[][] noise;      // residual variance per tile
+    public double[][] edges;      // mean Sobel strength per tile
+    public BufferedImage edgeMap; // Sobel strength as a gray picture
 
     public static Analysis run(BufferedImage image) {
         Analysis a = new Analysis();
@@ -24,6 +27,9 @@ public class Analysis {
         a.standardDeviation = Histogram.standardDeviation(a.histogram);
         a.entropy = Histogram.entropy(a.histogram);
         a.regions = Regions.analyze(a.gray, Regions.TILE);
+        a.noise = Noise.tileVariance(a.gray, a.regions);
+        a.edges = Edges.tileStrength(a.gray, a.regions);
+        a.edgeMap = Edges.map(a.gray);
         return a;
     }
 }
