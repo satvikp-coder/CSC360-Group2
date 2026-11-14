@@ -10,16 +10,14 @@ Simple-Image-Proof is a student project exploring a basic way to **compare image
 
 This is an **educational image-comparison tool**, not a forensic authentication system. A different histogram can suggest that an image has changed, but it cannot establish *why* it changed or prove deliberate manipulation. An edit can also leave the histogram almost unchanged.
 
-**Current status:** Project planning and documentation. The image-analysis application has **not been implemented yet**.
+**Current status:** A first working version exists: open one PNG or JPEG image, press **Analyze**, and the app shows its grayscale histogram with mean, standard deviation and entropy.
 
 Issue #5 adds reproducible synthetic sample images, a Java 17 dataset generator
 and dependency-free tests. See [evaluation and reproduction commands](docs/EVALUATION.md).
 Measured scores remain blocked until the histogram and comparison components
 are available; no classification threshold has been validated.
 
-Issue #4 adds a standalone Swing histogram panel and dependency-free headless
-tests. See [panel setup and integration contract](docs/HISTOGRAM_PANEL.md) for
-Java 17 build commands and verification status. The full application is pending.
+The histogram panel from issue #4 is now part of the app window (`HistogramPanel`).
 
 ## Project objectives
 
@@ -92,9 +90,9 @@ java -jar target/simple-image-proof-0.1.0.jar
 
 Or run `./launcher.sh` (macOS/Linux) or `launcher.bat` (Windows). The launcher checks Java 17+ and Maven, rebuilds what changed, skips tests and starts the app. `mvn test` also works from another folder (`mvn -f path/to/pom.xml test`). GitHub Actions runs `mvn test` on Java 17 (Ubuntu and Windows) for every push and pull request.
 
-Usage: press **Load reference…** and **Load comparison…**, choose two images (PNG/JPG/GIF/BMP, sizes may differ), then press **Compare**. Changing either image clears the previous result. Unreadable or non-image files show an error and keep the current inputs.
+Usage: press **Open image…** and choose a PNG or JPEG file, then press **Analyze**. Opening another image clears the previous result. Cancelling the file dialog changes nothing. Unreadable, unsupported or too large (over 16 megapixels) files show an error and keep the current image and its results.
 
-Tested so far: `Comparison` (identical = 0, disjoint = 1, hand-calculated 0.5, symmetry, invalid inputs) and basic histogram normalization. The Swing workflow still needs recorded manual end-to-end testing.
+Tested so far (`mvn test`): histogram counting, gray and alpha rules, normalization, statistics, `Comparison`, loading valid and invalid files, and the histogram panel. A recorded mouse walkthrough of the window (open, cancel, analyze, replace, bad file) is still to do.
 
 ## Team
 
