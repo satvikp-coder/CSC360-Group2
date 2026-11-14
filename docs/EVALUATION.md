@@ -1,174 +1,70 @@
-# Reproducible histogram behavior evaluation
+# Evaluation
 
-Related issue: #5. Dataset preparation is complete; measured evaluation is BLOCKED
-on the real Histogram (#1) and Comparison (#2) implementations. Neither exists
-on main or any fetched teammate branch at preparation time. No score below is a
-measurement. No alternative scoring implementation has been substituted.
+Measured output of the real analysis on the synthetic samples. No threshold, probability or accuracy figure is claimed.
 
-## Objective and provenance
+## Samples
 
-Explore sensitivity of normalized grayscale histograms to transformations and
-the loss of spatial information. All source pixels are generated for CSC360
-Group 2 by the code in `tools/imageproof/DatasetGenerator.java`; no external
-images, personal photographs, or third-party permission are involved. The group
-may publish these synthetic samples with this project. This statement does not
-change the licensing of unrelated repository content.
+All files are 256 x 192 and made by `tools/imageproof/SampleGenerator.java` with seed `3602026`. No outside images, so the group may share them.
 
-The single original is a 192 x 128 opaque RGB image (24,576 pixels). For each
-coordinate, integer division gives R = x*255/191, G = y*255/127 and
-B = 48 when (x/12 + y/16) is even, otherwise 208. This combines horizontal and
-vertical brightness/color gradients with a checkerboard. ImageIO receives no
-source metadata; only codec-generated structural metadata is written.
-
-## Dataset and transformation settings
-
-All files are included in `samples/generated/`. All images are 192 x 128 except
-the 96 x 96 crop. All images use lossless PNG except the JPEG case.
-
-| Comparison file | Exact generation method | Format |
+| File | How it is made | Known edit (x, y, w, h) |
 | --- | --- | --- |
-| identical.png | Same RGB pixels as original.png | PNG |
-| brightness.png | Add 30 to each RGB channel; clamp to [0,255] | PNG |
-| contrast.png | Each channel: Math.round(128 + 1.4*(channel-128)); clamp | PNG |
-| crop.png | Rectangle x=0..95, y=0..95, copied without resizing | PNG |
-| recompressed.jpg | Original RGB encoded once using default JDK JPEG writer, explicit quality 0.65f, default subsampling | JPEG |
-| shuffled.png | Fisher-Yates permutation, java.util.Random seed 3602026, descending i, nextInt(i+1) | PNG |
-| localized.png | Set x=88..95, y=60..67 to RGB white; exactly 64 pixels changed | PNG |
-| unsupported.txt | UTF-8 explanatory text, deliberately not an image | Text |
+| original.png | red = x, green = 4y/3, blue = 32 px checkerboard (60/180), each plus noise -20..20 | none |
+| copied.png | original with 48 x 48 copied | from (16, 16, 48, 48) to (168, 112, 48, 48), shift (152, 96) |
+| copied.jpg | copied.png saved as JPEG, quality 0.65 | same as copied.png |
+| inserted.png | red square with black frame | (120, 40, 40, 40) |
+| brightness.png | every channel + 40 (clamped) | whole image |
+| blurred.png | 3 x 3 box blur, border unchanged | whole image |
+| shuffled.png | original pixels in random order (Fisher-Yates, same seed) | whole image |
+| repeated.png | one 32 x 32 piece of the original repeated | none (pattern only) |
+| grayscale.png | 8-bit gray PNG of the original's gray values | none |
+| transparent.png | left half alpha 0 hiding black, right half original | none |
+| corrupt.png | first half of original.png's bytes | broken file |
+| unsupported.txt | text | not an image |
 
-`original.png` is the reference for every pair. JPEG starts from the original
-synthetic pixels, not another JPEG. Default codec details may vary by JDK vendor
-and version. Byte reproducibility is checked within the recorded environment;
-the committed SHA256SUMS provides the exact artifact baseline. Different codecs
-may require recording a new manifest and repeating measurements. Do not silently
-replace a baseline or claim cross-vendor byte identity.
+## Reproduce
 
-## Reproduction (repository root, PowerShell)
-
-Java 17 or later, standard library only:
-
-```powershell
-javac --release 17 -Xlint:all -d out tools/imageproof/*.java tests/imageproof/DatasetTest.java
-java -cp out imageproof.DatasetGenerator samples/generated
-java '-Djava.awt.headless=true' -cp out imageproof.DatasetTest
-java '-Djava.awt.headless=true' -cp out imageproof.EvaluateDataset samples/generated
+```bash
+mvn -q test-compile
 ```
 
-Actual preparation results: generation produced nine inputs and SHA256SUMS;
-DatasetTest now passes 9,292 checks on both JDK 24.0.2 and the actual Temurin
-17.0.21+9 runtime, with Java 17 compilation target and no compilation warnings.
-The Java 17 regeneration matches the committed baseline byte-for-byte, including
-JPEG, PNGs and text files; no baseline changes were necessary.
-The test generates twice into fresh temporary directories, compares both
-generations and committed files byte-for-byte (including manifest), checks
-dimensions/decoding, crop content, identical pixels, shuffle multiset and changed
-positions, exactly 64 localized changes, and ImageIO returning null for the text
-file. Additional checks independently hash each committed file against its
-manifest entry, verify actual file formats, check fixed brightness/contrast RGB
-fixtures (including saturation) and check localized patch boundaries. The
-temporary test directories are removed by the test.
-
-The portable Java 17 JRE was obtained from Eclipse Adoptium, kept outside the
-repository, and verified against the release API's SHA-256 checksum:
-
-```text
-OpenJDK17U-jre_x64_windows_hotspot_17.0.21_9.zip
-fe4656bd78fb09812dc38c49da777f79cc33e7ee435a254be82f9e7f40d9d117
-openjdk version "17.0.21" / Temurin-17.0.21+9
+```bash
+java -cp target/classes:target/test-classes imageproof.SampleGenerator samples
 ```
 
-The installed Java and PATH were unchanged. Actual Java 17 invocation:
-
-```powershell
-& "$env:TEMP\imageproof-jre17\jdk-17.0.21+9-jre\bin\java.exe" '-Djava.awt.headless=true' -cp out imageproof.DatasetTest
-& "$env:TEMP\imageproof-jre17\jdk-17.0.21+9-jre\bin\java.exe" '-Djava.awt.headless=true' -cp out imageproof.EvaluateDataset samples/generated
+```bash
+java -Djava.awt.headless=true -cp target/classes:target/test-classes imageproof.Evaluate samples
 ```
 
-The final command actually executed and reported:
+(On Windows use `;` instead of `:` in the class path.) `SamplesTest`, part of `mvn test`, regenerates the samples and checks the decoded PNG pixels equal the committed ones, plus the facts below.
 
-```text
-BLOCKED: real Histogram and Comparison implementations required; no scores produced.
-```
+## Measured results
 
-Its actual native exit status was 2, with zero bytes on stdout. No results CSV
-is committed because no scores have been measured. Dependencies were rechecked
-on 2026-11-06: main and all remote branches still lack Histogram/Comparison/App.
-The adapter now also rejects a nonfinite reverse score before testing symmetry;
-that dependent execution path remains unverified until real math is available.
+Full table: [RESULTS.csv](RESULTS.csv). Tiles are written `r<row> c<col>` (64 px tiles, 3 rows x 4 cols). Measured on OpenJDK 21 (compiled for Java 17).
 
-## Measured score table and expectations
+| File | Mean | Std | Entropy | Max variation (tile) | Max noise var. (tile) | Max edge (tile) | Copy-move pairs |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| original.png | 126.35 | 50.22 | 7.650 | 0.631 (r1 c3) | 127.98 (r1 c1) | 54.71 (r1 c0) | 0 |
+| copied.png | 120.67 | 51.04 | 7.664 | 0.640 (r1 c3) | 168.72 (r2 c2) | 65.47 (r2 c2) | 25, shift (152, 96) |
+| copied.jpg | 120.66 | 50.65 | 7.651 | 0.656 (r1 c3) | 129.63 (r2 c3) | 64.60 (r2 c2) | 15, shift (152, 96) |
+| inserted.png | 125.13 | 51.68 | 7.625 | 0.631 (r1 c3) | 164.01 (r1 c2) | 64.49 (r1 c2) | 0 |
+| brightness.png | 163.43 | 47.01 | 7.504 | 0.667 (r2 c0) | 127.98 (r1 c1) | 54.71 (r1 c0) | 0 |
+| blurred.png | 126.35 | 49.00 | 7.603 | 0.723 (r1 c3) | 6.58 (r0 c3) | 24.18 (r1 c0) | 0 |
+| shuffled.png | 126.35 | 50.22 | 7.650 | 0.137 (r0 c3) | 2324.54 (r1 c2) | 226.02 (r0 c0) | 0 |
+| repeated.png | 24.21 | 12.92 | 5.455 | 0.000 (r0 c0) | 106.18 (r1 c3) | 49.53 (r1 c1) | 200 (limit reached), shift (32, 0) |
+| grayscale.png | 126.35 | 50.22 | 7.650 | 0.631 (r1 c3) | 127.98 (r1 c1) | 54.71 (r1 c0) | 0 |
+| transparent.png | 200.19 | 63.92 | 4.749 | 0.717 (r1 c2) | 176.41 (r0 c2) | 63.49 (r0 c2) | 0 |
+| corrupt.png | load error: "Error reading PNG metadata" | | | | | | |
+| unsupported.txt | load error: "not a PNG or JPEG image" | | | | | | |
 
-| Pair against original | Actual score | Expected behavior to investigate |
-| --- | --- | --- |
-| Identical | BLOCKED | Exactly zero distribution distance |
-| Brightness +30 | BLOCKED | Clipping and shifted channel values may change distribution |
-| Contrast x1.4 | BLOCKED | Distribution may broaden and accumulate at extremes |
-| Top-left crop | BLOCKED | Content-dependent: selected area excludes brighter gradient regions |
-| JPEG quality 0.65 | BLOCKED | Benign encoding can change decoded pixels and histogram |
-| Lossless shuffle | BLOCKED | Zero: positions change while exact RGB multiset is preserved |
-| Local white 8 x 8 patch | BLOCKED | Small distribution effect; only 64/24576 pixels changed |
-| Unsupported text | No score; ImageIO returned null (tested) | Application must show a useful error; App verification pending |
+## What the numbers show
 
-These expectations are hypotheses or mathematical invariants, not observed
-distance results. Successful shuffle multiset verification is observed evidence
-about pixels, not a completed execution of Histogram/Comparison.
+- **Copy-move works on the exact copy**: 25 pairs, all with the known shift (152, 96), green/magenta boxes on the known rectangles ([screenshot](images/app-copy-move.png)).
+- **JPEG did not remove all matches here**: 15 of 25 pairs survive because the shift is a multiple of 8, the JPEG block size, so copied blocks are often encoded the same. With other shifts or re-saving, exact matching would usually fail.
+- **False positive**: `repeated.png` has no edit but gives 200 candidates (the limit) because the pattern repeats. Candidates are not proof ([screenshot](images/app-repeated.png)).
+- **Missed change**: `inserted.png` gives no copy-move candidates (the square is flat and not copied). Its tile r1 c2 does have the highest noise and edge values, but so do normal object edges; the largest regional variation tile (r1 c3) is the same as in the original.
+- **Global histogram ignores position**: `shuffled.png` has exactly the same mean, std and entropy as the original although it looks like noise. Its regional variation drops (all tiles look alike) while noise and edge values jump.
+- **Normal edits change numbers**: brightness moves the mean by about 37; blur cuts the noise variance from 127.98 to 6.58.
+- **Input rules**: `grayscale.png` gives exactly the original's numbers (gray samples read directly, issue #22). The transparent half counts as white, not the hidden black (issue #23), so its mean is high.
+- **Bad files** are rejected with a message and do not produce results.
 
-## Complete the measured evaluation when dependencies arrive
-
-1. Verify Histogram and Comparison tests and document their actual grayscale
-   rule. Required formula is 0.299R + 0.587G + 0.114B; the rounding rule remains
-   undecided by its owner, so do not assume floor or round here.
-2. Compile actual source with the adapter:
-
-   ```powershell
-   javac --release 17 -Xlint:all -d out src/imageproof/*.java tools/imageproof/*.java tests/imageproof/DatasetTest.java
-   java '-Djava.awt.headless=true' -cp out imageproof.EvaluateDataset samples/generated
-   ```
-
-3. The adapter currently uses the planned public static methods
-   `Histogram.compute(BufferedImage)`, `Histogram.normalize(int[])` and
-   `Comparison.difference(double[], double[])`. Adapt only these calls if the
-   owners finalize a different API. Never add a fallback histogram/distance.
-4. Record the exact application commit, runtime, rounding rule and actual CSV
-   output in this report. The adapter checks 256 finite nonnegative bins summing
-   to one, score range/symmetry, zero identical/shuffle distances and exact
-   shuffled histograms. It prints scores only after all checks pass. It invokes
-   the application mathematics on images decoded by ImageIO.
-5. Compare expectations against each observed value, record benign/missed-change
-   examples and rerun on Java 17. Then complete the real GUI invalid-file demo.
-
-The required normalized bins are counts divided by image pixel count; distance
-is 0.5 * sum(abs(p[i]-q[i])). This is a contract, not an implemented calculation
-in this branch.
-
-## Interpretation and limits
-
-This evaluation does not support a reliable classification threshold. There are
-no measured distances yet, and even future results from one synthetic original
-and seven variants are too small and dependent a sample to establish population
-accuracy, false-alarm rates or reliable thresholds. There is no held-out set,
-camera pipeline variation, natural-image coverage, or survey of edit types.
-
-The shuffle is a deliberate spatial change that a global histogram necessarily
-misses: it counts how often a value occurs and discards where it occurs. A
-benign JPEG conversion can alter frequencies and cause a false alarm under an
-over-sensitive threshold. These are planned missed-change and false-alarm
-demonstrations; measured magnitudes remain pending. Cropping is content-dependent
-and another crop might preserve the distribution. The local patch changes only
-about 0.2604% of pixels, which bounds its possible total variation effect but is
-not a measured score. A larger spatial rearrangement can have zero distance.
-
-No histogram score proves editing, absence of editing, forgery or authenticity.
-Distance is not the percentage of edited pixels. A threshold cannot generally
-separate arbitrary edits from benign changes because distinct images can have
-the same distribution.
-
-## Acceptance status
-
-- Reproducible pairs, provenance and transformation parameters: complete and tested.
-- Actual scores and observed behavior for all core cases: blocked on #1/#2.
-- Benign differences, spatial limitations and threshold caveat: documented;
-  measured examples outstanding.
-- App error-handling demonstration: blocked on #3.
-- Issue #5 remains open; PR remains draft pending measured evaluation and review.
-- CI is not configured; local checks are not a CI run.
+None of these values is used as a verdict.

@@ -1,0 +1,13 @@
+file,width,height,format,mean,std,entropy,max_variation,max_variation_tile,max_noise,max_noise_tile,max_edge,max_edge_tile,copy_move_pairs,copy_move_shift,truncated
+original.png,256,192,PNG,126.35,50.22,7.650,0.631,r1 c3,127.98,r1 c1,54.71,r1 c0,0,,false
+copied.png,256,192,PNG,120.67,51.04,7.664,0.640,r1 c3,168.72,r2 c2,65.47,r2 c2,25,152 96,false
+copied.jpg,256,192,JPEG,120.66,50.65,7.651,0.656,r1 c3,129.63,r2 c3,64.60,r2 c2,15,152 96,false
+inserted.png,256,192,PNG,125.13,51.68,7.625,0.631,r1 c3,164.01,r1 c2,64.49,r1 c2,0,,false
+brightness.png,256,192,PNG,163.43,47.01,7.504,0.667,r2 c0,127.98,r1 c1,54.71,r1 c0,0,,false
+blurred.png,256,192,PNG,126.35,49.00,7.603,0.723,r1 c3,6.58,r0 c3,24.18,r1 c0,0,,false
+shuffled.png,256,192,PNG,126.35,50.22,7.650,0.137,r0 c3,2324.54,r1 c2,226.02,r0 c0,0,,false
+repeated.png,256,192,PNG,24.21,12.92,5.455,0.000,r0 c0,106.18,r1 c3,49.53,r1 c1,200,32 0,true
+grayscale.png,256,192,PNG,126.35,50.22,7.650,0.631,r1 c3,127.98,r1 c1,54.71,r1 c0,0,,false
+transparent.png,256,192,PNG,200.19,63.92,4.749,0.717,r1 c2,176.41,r0 c2,63.49,r0 c2,0,,false
+corrupt.png,load error: Error reading PNG metadata
+unsupported.txt,load error: unsupported.txt is not a PNG or JPEG image.

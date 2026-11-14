@@ -13,7 +13,7 @@ public class AllTests {
         NoiseEdgesTest.main(args);
         CopyMoveTest.main(args);
         ImagePanelTest.main(args);
-        DatasetTest.main(args);
+        SamplesTest.main(args);
         System.out.println("All tests passed");
     }
 }
