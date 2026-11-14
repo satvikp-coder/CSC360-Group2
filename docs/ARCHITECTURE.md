@@ -15,6 +15,8 @@ File --LoadedImage.load--> BufferedImage --Analysis.run--> Analysis
 Analysis --> App shows it in ImagePanel (heatmap / boxes) and HistogramPanel + text
 ```
 
+Diagrams: [pixel to histogram](images/pixel-to-histogram.svg), [TVD between two histograms](images/histogram-compare.svg) (16 bins shown; the app uses 256).
+
 ## Classes (`src/imageproof`)
 
 | Class | Responsibility |

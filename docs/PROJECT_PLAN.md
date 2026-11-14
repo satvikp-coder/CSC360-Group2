@@ -30,8 +30,9 @@ Out of scope: authenticity/forgery verdicts, thresholds or probabilities, machin
 
 ## Test plan and results
 
-Automated: `mvn test` (see `tests/imageproof`). Measured sample results: [EVALUATION.md](EVALUATION.md). GUI steps: [MANUAL_TEST.md](MANUAL_TEST.md).
+Automated: `mvn test` (see `tests/imageproof`). Measured sample results: [EVALUATION.md](EVALUATION.md). GUI steps: [MANUAL_TEST.md](MANUAL_TEST.md). Demo script: [DEMO.md](DEMO.md).
 
 ## Remaining
 
+- Manual GUI walkthrough by hand: record outcomes in `MANUAL_TEST.md`.
 - Course submission format, presentation and deadline: to confirm with the instructor.
