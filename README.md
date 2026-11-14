@@ -76,7 +76,7 @@ Cancelling the file chooser keeps the current image. A broken or unsupported fil
 | `LoadedImage` | reads a PNG/JPEG with clear errors |
 | `App`, `ImagePanel`, `HistogramPanel` | the Swing window |
 
-More: [Architecture](docs/ARCHITECTURE.md), [Manual test](docs/MANUAL_TEST.md), [Java concepts](docs/JAVA_CONCEPTS.md), [Project plan](docs/PROJECT_PLAN.md).
+More: [Architecture](docs/ARCHITECTURE.md), [Manual test](docs/MANUAL_TEST.md), [Demo and presentation guide](docs/DEMO.md), [Java concepts](docs/JAVA_CONCEPTS.md), [Project plan](docs/PROJECT_PLAN.md).
 
 ## Limitations
 

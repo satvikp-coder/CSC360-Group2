@@ -1,6 +1,6 @@
 # Contributing
 
-This repository is for **CSC360 Group 2**. Contributions should support the assigned basic histogram-based image comparison project.
+This repository is for **CSC360 Group 2**. Contributions should support the assigned histogram-based single-image analysis project.
 
 ## Team workflow
 
@@ -13,14 +13,14 @@ This repository is for **CSC360 Group 2**. Contributions should support the assi
 ## Implementation principles
 
 - Prefer clear, understandable code suited to an academic demonstration.
-- Separate image loading, histogram calculation, comparison, and presentation.
-- Add tests for correct calculations and invalid inputs.
-- Do not label an image as definitely forged on histogram evidence alone.
+- Separate image loading, measurements, and presentation: maths classes contain no Swing code.
+- Add tests for correct calculations and invalid inputs; `mvn test` must pass.
+- Do not label an image as edited, forged or authentic; show measurements only.
 - Avoid including confidential images, personal information, credentials, or unlicensed sample data.
 
 ## Documentation updates
 
-When features are implemented, update `README.md` with the actual dependencies, setup commands, usage example, and tested behavior. Update `docs/PROJECT_PLAN.md` as decisions are made.
+When behaviour changes, update `README.md` (setup, usage, tested behaviour) and `docs/PROJECT_PLAN.md` (decisions). If measurements change, rerun `Evaluate` and update `docs/EVALUATION.md`, `docs/RESULTS.csv` and the numbers in `docs/DEMO.md`.
 
 ## Questions and proposed changes
 
