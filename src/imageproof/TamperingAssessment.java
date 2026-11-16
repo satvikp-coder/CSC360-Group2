@@ -169,14 +169,16 @@ public final class TamperingAssessment {
     // The earlier exact-copy rule, now only one specialised input of the final assessment.
     private static CopyResult judgeCopy(Analysis a) {
         String evidence = "Retained candidate pairs: " + a.copyMove.matches.size()
-                + "; blocks checked: " + a.copyMove.blocksChecked + "; comparisons: " + a.copyMove.comparisons
+                + "; blocks checked: " + a.copyMove.blocksChecked + " of " + a.copyMove.blocksTotal
+                + String.format(Locale.ROOT, " (%.0f%% of the block grid)", a.copyMove.coveragePercent())
+                + "; comparisons: " + a.copyMove.comparisons
                 + "\nConfigured search completed without reaching a cap: " + (a.copyMove.truncated ? "NO" : "YES")
                 + " (exact grayscale 16 px blocks on the 8 px grid only).";
         if (a.copyMove.truncated) {
-            boolean manyMatches = a.copyMove.matches.size() >= CopyMove.MAX_MATCHES || a.copyMove.comparisons >= CopyMove.MAX_COMPARISONS;
+            boolean manyMatches = a.copyMove.blocksChecked == a.copyMove.blocksTotal;
             return new CopyResult(Kind.INCOMPLETE, manyMatches
                     ? "many identical blocks were found (a repeated pattern is likely) and the search hit its limit."
-                    : "the image is large, so the copy search covered only part of it.", evidence);
+                    : String.format(Locale.ROOT, "the copy search covered only %.0f%% of the image.", a.copyMove.coveragePercent()), evidence);
         }
         int patch = CopyMove.BLOCK + CopyMove.STEP;
         int span = patch + 2 * CopyMove.BLOCK;
@@ -223,8 +225,7 @@ public final class TamperingAssessment {
                 || m.x1 % CopyMove.STEP != 0 || m.y1 % CopyMove.STEP != 0
                 || m.x2 % CopyMove.STEP != 0 || m.y2 % CopyMove.STEP != 0) return false;
         if (Math.abs(m.x2 - m.x1) < 2 * CopyMove.BLOCK && Math.abs(m.y2 - m.y1) < 2 * CopyMove.BLOCK) return false;
-        return CopyMove.variance(a.gray, m.x1, m.y1) >= CopyMove.MIN_VARIANCE
-                && CopyMove.variance(a.gray, m.x2, m.y2) >= CopyMove.MIN_VARIANCE
+        return CopyMove.textured(a.gray, m.x1, m.y1) && CopyMove.textured(a.gray, m.x2, m.y2)
                 && CopyMove.same(a.gray, m.x1, m.y1, m.x2, m.y2);
     }
 

@@ -41,7 +41,7 @@ public class LocalAnomaly {
         result.boundaryExplained = new boolean[r.rows][r.cols];
         result.flagged = new boolean[r.rows][r.cols];
         if (r.rows * r.cols < MIN_TILES) {
-            result.unavailableReason = "The image has fewer than " + MIN_TILES + " tiles, so there is not enough nearby context.";
+            result.unavailableReason = "Limited analysis: the image is too small (fewer than " + MIN_TILES + " tiles) to compare regions.";
             return result;
         }
         double[] variation = robust(r.variation);

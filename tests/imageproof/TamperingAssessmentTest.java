@@ -107,12 +107,12 @@ public class TamperingAssessmentTest {
         int[][] multiple = CopyMoveTest.noise(128, 128, 809);
         CopyMoveTest.copy(multiple, 8, 8, 64, 8, 24); CopyMoveTest.copy(multiple, 8, 8, 64, 64, 24);
         check(image(multiple).assessment.outcome == TamperingAssessment.Outcome.INCONCLUSIVE, "multiple actual displacements are ambiguous");
-        for (int high : new int[]{9, 10}) {
+        for (int high : new int[]{3, 4}) {
             int[][] texture = new int[24][56];
             for (int y = 0; y < 24; y++) for (int x = 0; x < 56; x++) texture[y][x] = (x + y) % 2 * high;
             Analysis threshold = pairs(image(texture), 32, 0, new int[][]{{0, 0}, {8, 0}, {0, 8}});
-            check(TamperingAssessment.evaluate(threshold).outcome == (high == 10 ? TamperingAssessment.Outcome.POSSIBLE_TAMPERING : TamperingAssessment.Outcome.INCONCLUSIVE),
-                    "inherited texture variance 25 boundary, high=" + high);
+            check(TamperingAssessment.evaluate(threshold).outcome == (high == 4 ? TamperingAssessment.Outcome.POSSIBLE_TAMPERING : TamperingAssessment.Outcome.INCONCLUSIVE),
+                    "inherited texture variance 4 boundary (alternating 0/high has variance (high/2)^2), high=" + high);
         }
         int[][] overlap = new int[40][80];
         for (int y = 0; y < 40; y++) for (int x = 0; x < 80; x++) overlap[y][x] = (x + y) % 2 * 200;

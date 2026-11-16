@@ -121,7 +121,7 @@ copy patch, or when the measurements are invalid.
 
 The earlier exact-copy rule is kept as one specialised input. Supported when all
 retained pairs share one displacement, positions are unique, pixels are exactly
-equal, texture variance >= 25, there are at least 3 pairs forming one
+equal, textured (variance >= 4 and residual variance >= 1), there are at least 3 pairs forming one
 side-connected source patch, and the footprint is disjoint from its partner.
 Search limits, several shifts, weak or ambiguous matches are *not conclusive*
 (not tampering evidence, but they stop a "no notable indicators" answer).
@@ -131,7 +131,7 @@ Search limits, several shifts, weak or ambiguous matches are *not conclusive*
 | Status | When |
 | --- | --- |
 | Possible tampering indicators | flagged local tiles, or a supported copy-move patch pair |
-| Inconclusive | invalid measurements; local rule unavailable (too few tiles / homogeneous); or nothing flagged but the copy search was truncated or ambiguous (repeated pattern, large image only partly searched) |
+| Inconclusive | invalid measurements; local rule unavailable (too few tiles / homogeneous); or nothing flagged but the copy search was truncated or ambiguous (repeated pattern, hit a comparison limit) |
 | No notable indicators | local rule available and nothing flagged, copy search completed without a supported patch. Not a statement that the image is original |
 
 ### Threshold justification and validation (honest summary)
@@ -172,7 +172,7 @@ Reproduce with `Evaluate` (see below). Full columns: [RESULTS.csv](RESULTS.csv).
 | 6 benign controls (strong edges, text, shadow, texture, vignette) | 0 | 0.0% | No notable indicators | No false positives |
 | control: patch with less noise | 2 | 4.2% | Possible tampering | **Detected** (2 of 12 flagged tiles touch the patch) |
 | control: brighter patch (+40) | 0 | 0.0% | No notable indicators | **Missed**; histogram shifts are not flagged without a noise change |
-| 4000 x 3000 noise image | 0 | 0.0% | Inconclusive | Copy search covered only the first 20000 blocks |
+| 4000 x 3000 noise image | 0 | 0.0% | No notable indicators | Earlier versions covered only the first 20000 blocks and were Inconclusive; the whole grid is now searched |
 
 **False positives:** none of the 9 benign images above; a constructed pair of
 identical motifs (not copied) still gives a *copy-move* warning (seed
@@ -184,6 +184,68 @@ whose histogram **and** noise both differ from their surroundings.
 **Inconclusive / N/A:** the repeated pattern, the 12 MP image and images with
 fewer than 9 tiles (smaller than about 192 x 192).
 No accuracy percentage is claimed.
+
+## Benchmark with development and held-out scenes
+
+`tools/imageproof/Benchmark.java` builds the scenes in code (**synthetic only, no
+photographs**): sky and buildings, forest, indoor text with a shadow, portrait,
+smooth sky, repeated bricks, noise-free graphic, and (held-out only) a night city
+and fabric. Each scene has its own seed and belongs to exactly one group, and
+every edited version is made from its own scene, so nothing leaks between
+groups. Development seeds are 1000-1006; held-out seeds are 5000-5008 and two
+families are never used in development. Sizes range from 160 x 120 to 640 x 480.
+Each scene gives: the original, JPEG q75 and q40, a gray-type file, a file with a
+transparent corner, an inserted foreign object, brightness patches (+45 and -45),
+copy-moves (on the 8 px grid and off-grid), global brightness, global blur, and a
+small 160 x 120 version with two local edits.
+
+Rules were examined **only on the development set**. The held-out set was run
+once, with the final code. Results (rows are ground truth, columns the status):
+
+| Group | Truth | Possible | No notable | Inconclusive |
+|---|---|---|---|---|
+| dev | genuine (42) | 0 | 33 | 9 |
+| dev | local edit (35) | 0 | 21 | 14 |
+| dev | copy-move (14) | 5 | 8 | 1 |
+| dev | global edit (14) | 0 | 14 | 0 |
+| held-out | genuine (54) | 0 | 43 | 11 |
+| held-out | local edit (45) | 0 | 27 | 18 |
+| held-out | copy-move (18) | 7 | 10 | 1 |
+| held-out | global edit (18) | 0 | 18 | 0 |
+
+Per-image rows (assessment, area, coverage, milliseconds):
+[BENCHMARK_DEV.csv](BENCHMARK_DEV.csv), [BENCHMARK_HELDOUT.csv](BENCHMARK_HELDOUT.csv).
+Reproduce: `java -cp target/classes:target/test-classes imageproof.Benchmark held-out docs/BENCHMARK_HELDOUT.csv`.
+
+**Reading the numbers honestly**
+- **No false warnings** on 96 genuine images (JPEG re-saves, gray, transparent,
+  natural repeats, smooth sky, text, noise-free art). Inconclusive on 20 of
+  them: JPEG q40 (many identical blocks), small images (too few tiles) and some
+  copy searches.
+- **The local rule detected none of the 80 local edits** (inserted objects and
+  brightness patches). It is not a usable local-edit detector on these scenes.
+  Its only detections remain constructed noise-level patches (see above).
+- **Copy-move detected 12 of 32.** Misses are all off-grid copies (cannot be found
+  by design), copies of perfectly flat regions, and a few JPEG/forest cases.
+- **Global brightness and blur are never flagged** (0 of 32). These are not local.
+- Detected copies report 2.7% to 10.7% of the area, taken from the matched blocks.
+- Every image had 100% copy-search coverage; the slowest analysis took about
+  0.55 s (640 x 480).
+- These synthetic results say nothing about real-world accuracy.
+
+## Limitations investigated
+
+| Limitation | Class | What was tested and decided |
+|---|---|---|
+| Large images only partly searched | A (fixed) | Block hashing replaces pairing every block with every other: the whole block grid is searched (a copy in the last rows of a 1300 x 1300 image is found), and the coverage percentage is reported. Comparison/match limits still apply and are reported. |
+| Copies of noisy "flat" regions (sky) were skipped | B (improved) | Block variance floor 25 -> 4 (std 2). Development: copy-move detections 2 -> 5, genuine false warnings 0 -> 0. A smooth noise-free ramp then repeated exactly by itself (a false warning on a small clean graphic), so blocks must also have residual variance >= 1 (a rounded ramp has about 0.08). |
+| Inserted object, brightness patch | C (not fixed) | Genuine scenes already have as many noise-unusual tiles as edited ones (for example 8 vs 8 in the forest scene); a brightness patch is indistinguishable from a shadow. Tried on development: z 2.0 (+1 false warning, no gain), histogram only (3/18 detected, 1/30 false warning, and no supporting evidence required), histogram OR noise (flags 18 of 30 genuine). **Rejected; the rule is unchanged.** |
+| Global brightness / blur | C | A single image has no reference; a darker or blurrier photo is valid. |
+| Shuffled pixels | C for this method | Histogram and neighbour statistics are not designed for it; unchanged. |
+| Off-grid, rotated, scaled copies | B, rejected | Indexing every pixel offset costs about 16x more hashing for a 16 MP image and a heavier method; not worth it for this project. Documented as a miss. |
+| Identical natural motifs | C | Pixel-identical patches look the same whether copied or naturally repeated. Many matches, several shifts or a cap give "Inconclusive" (preserved). |
+| Small images | Inconclusive kept | A 32 px tile (adaptive) removed most "Inconclusive" results on development but detected 0 of 14 small edits, so it would only replace an honest "Inconclusive" with a misleading "No notable indicators". **Rejected.** The message now starts with "Limited analysis". |
+| Uniform images | C | No local contrast to compare. |
 
 ## Reproduce assessment tests
 

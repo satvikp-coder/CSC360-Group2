@@ -29,7 +29,7 @@ copy-move patch pair is added as separate evidence. Exact rules and thresholds:
 
 - **Possible tampering indicators:** flagged tiles and/or a supported copy-move patch pair.
 - **No notable indicators:** the tests found nothing. This does **not** mean the image is original or authentic.
-- **Inconclusive:** not enough reliable information (tiny or uniform image, invalid data, repeated pattern, copy search only partly covering a big image).
+- **Inconclusive:** not enough reliable information (tiny or uniform image, invalid data, repeated pattern, a copy-search limit).
 
 **Anomalous area = 100 x flagged pixel area / analyzed pixel area.** It says how
 much of the image met the rule. It is **not** a probability of forgery or editing;
@@ -107,7 +107,7 @@ More: [Architecture](docs/ARCHITECTURE.md), [Manual test](docs/MANUAL_TEST.md), 
 
 - Histograms ignore pixel positions: `shuffled.png` has exactly the same global histogram as the original.
 - Normal edges and texture give high variation, noise and edge values.
-- The local rule sees regions whose histogram **and** noise both differ from their surroundings. It misses global changes (brightness, blur), shuffled pixels and flat inserted objects, and natural content can fire it. See the false positives and misses in [EVALUATION.md](docs/EVALUATION.md#actual-assessment-results).
+- The local rule sees regions whose histogram **and** noise both differ from their surroundings. It misses global changes (brightness, blur), shuffled pixels and flat inserted objects, and natural content can fire it. On a synthetic development/held-out benchmark it detected none of 80 local edits and 12 of 32 copy-moves, with no false warnings on 96 genuine images ([details](docs/EVALUATION.md#benchmark-with-development-and-held-out-scenes)).
 - Copy-move only finds exact copies moved by a multiple of 8 px, no rotation or scaling. Repeated patterns give false candidates. Big images are only partly searched (limit shown on screen).
 
 ## Team

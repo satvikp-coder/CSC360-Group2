@@ -443,12 +443,13 @@ public class App implements ActionListener, ChangeListener {
     static String copyMoveText(CopyMove c) {
         String text = "Copy-move candidates (exact 16 x 16 blocks, same shift at least "
                 + CopyMove.MIN_GROUP + " times)\n"
-                + "  Blocks checked: " + c.blocksChecked + ", comparisons: " + c.comparisons + "\n"
+                + "  Blocks checked: " + c.blocksChecked + " of " + c.blocksTotal
+                + String.format(Locale.ROOT, " (%.0f%% of the image)", c.coveragePercent())
+                + ", comparisons: " + c.comparisons + "\n"
                 + "  Candidate pairs: " + c.matches.size() + "\n";
         if (c.truncated) {
-            text = text + "  LIMIT REACHED: only part of the image was searched (limits "
-                    + CopyMove.MAX_BLOCKS + " blocks, " + CopyMove.MAX_COMPARISONS + " comparisons, "
-                    + CopyMove.MAX_MATCHES + " pairs shown).\n";
+            text = text + "  LIMIT REACHED (limits " + CopyMove.MAX_BLOCKS + " blocks, " + CopyMove.MAX_COMPARISONS
+                    + " comparisons, " + CopyMove.MAX_MATCHES + " pairs shown): the search is incomplete.\n";
         }
         for (int i = 0; i < c.matches.size() && i < 10; i++) {
             CopyMove.Match m = c.matches.get(i);
