@@ -7,26 +7,72 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Final assessment of ONE image. It combines the local anomaly rule (LocalAnomaly: regional histogram,
- * noise and edge measurements that agree in the same place) with the exact copy-move detector.
- * The anomalous-area percentage is measured area, never a probability of editing.
+ * Final assessment of ONE image. This is the last analysis step before {@link App} shows the result.
+ *
+ * <p>It combines three kinds of evidence:</p>
+ * <ul>
+ * <li>the local anomaly rule ({@link LocalAnomaly}): regional histogram, noise
+ * and edge measurements that agree in the same place,</li>
+ * <li>the solid-colour patch rule ({@link FlatPatch}),</li>
+ * <li>the exact copy-move detector ({@link CopyMove}).</li>
+ * </ul>
+ *
+ * <p>There are three outcomes:</p>
+ * <ul>
+ * <li>{@link Outcome#POSSIBLE_TAMPERING}: at least one rule found something
+ * (flagged tiles, a verified copy pair group, or a solid patch).</li>
+ * <li>{@link Outcome#INCONCLUSIVE}: the measurements are invalid, the local
+ * rule could not run, or the copy search was not conclusive.</li>
+ * <li>{@link Outcome#NO_CLEAR_INDICATORS}: nothing was found. This does NOT
+ * prove that the image is original, unedited or authentic.</li>
+ * </ul>
+ *
+ * <p>The anomalous-area percentage ({@link #areaPercent}) is a MEASURED AREA:
+ * {@code 100 * flagged pixel area / analyzed pixel area}. It is never a
+ * probability of forgery or editing.</p>
+ *
+ * <p>This is a teaching tool. It is not forensic proof.</p>
  */
 public final class TamperingAssessment {
-    public enum Outcome { POSSIBLE_TAMPERING, NO_CLEAR_INDICATORS, INCONCLUSIVE }
+    /** The three possible results of the assessment. */
+    public enum Outcome {
+        /** At least one rule found an area worth inspecting. */
+        POSSIBLE_TAMPERING,
+        /** No rule found anything. This does not prove the image is authentic. */
+        NO_CLEAR_INDICATORS,
+        /** There is not enough reliable information for a decision. */
+        INCONCLUSIVE
+    }
 
+    /** The result of the assessment. */
     public final Outcome outcome;
-    public final List<String> reasons;       // at most three short sentences
-    public final String decisionEvidence;    // technical text for the Advanced details view
+    /** The reasons for the outcome: at most three short sentences. */
+    public final List<String> reasons;
+    /** Technical text for the Advanced details view. */
+    public final String decisionEvidence;
+    /** Extra measurements for the Advanced details view. They are not decision votes. */
     public final String descriptiveMeasurements;
-    public final LocalAnomaly local;         // null if the measurements were invalid
-    public final List<Rectangle> flatRegions; // solid-colour patches (bounding boxes), may be empty
+    /** The local anomaly result, or {@code null} if the measurements were invalid. */
+    public final LocalAnomaly local;
+    /** Bounding boxes of solid-colour patches. It may be empty. */
+    public final List<Rectangle> flatRegions;
+    /** True if {@link #areaPercent} can be trusted. */
     public final boolean areaAvailable;
-    public final double areaPercent;         // 0..100, only meaningful if areaAvailable
+    /**
+     * Measured anomalous area: {@code 100 * flagged pixel area / analyzed pixel area},
+     * limited to 0..100. It is an AREA, never a probability of forgery or editing.
+     * It only means something if {@link #areaAvailable} is true; otherwise it is 0.
+     */
+    public final double areaPercent;
+    /** Number of pixels covered by flagged tiles, copy blocks and flat blocks (each pixel counted once). */
     public final long flaggedPixels;
+    /** Number of pixels in the whole analyzed image (width times height). */
     public final long analyzedPixels;
     private final Rectangle source;
     private final Rectangle destination;
+    /** Short note shown under the result. */
     public static final String NOTE = "These findings suggest areas worth inspecting. They do not confirm editing.";
+    /** Text about the limits of the method, shown in the Advanced details view. */
     public static final String LIMITATIONS = "Heuristic, not proof. Natural textures, shadows, edges and repeated objects can look unusual. "
             + "Insertions, shuffling, blur, rotated/off-grid or recompressed copies can be missed. "
             + "No notable indicators does not mean original, unedited or authentic. No probability of editing is calculated.";
@@ -49,35 +95,73 @@ public final class TamperingAssessment {
         this.areaPercent = ok ? Math.max(0, Math.min(100, 100.0 * flaggedPixels / analyzedPixels)) : 0;
     }
 
+    /**
+     * Short title of the outcome.
+     *
+     * @return "Possible tampering indicators", "No notable indicators" or "Inconclusive"
+     */
     public String title() {
         if (outcome == Outcome.POSSIBLE_TAMPERING) return "Possible tampering indicators";
         if (outcome == Outcome.NO_CLEAR_INDICATORS) return "No notable indicators";
         return "Inconclusive";
     }
 
-    /** "12.5% of analyzed image area" or "N/A (...)". */
+    /**
+     * The measured area as text, for example "12.5% of analyzed image area".
+     * This is a measured area, not a probability of forgery or editing.
+     *
+     * @return the area text, or "N/A (...)" if {@link #areaAvailable} is false
+     */
     public String areaText() {
         if (!areaAvailable) return "N/A (not enough reliable information to measure an area)";
         return String.format(Locale.ROOT, "%.1f%% of analyzed image area", areaPercent);
     }
 
+    /**
+     * Bounding box of the first patch of a verified copy pair group.
+     *
+     * @return a copy of the rectangle, or {@code null} if no copy was verified
+     */
     public Rectangle sourceBounds() { return source == null ? null : new Rectangle(source); }
+
+    /**
+     * Bounding box of the second patch of a verified copy pair group.
+     * The code does not know which patch was the original.
+     *
+     * @return a copy of the rectangle, or {@code null} if no copy was verified
+     */
     public Rectangle destinationBounds() { return destination == null ? null : new Rectangle(destination); }
 
-    /** The short default result: about ten lines, no tables. */
+    /**
+     * The short default result: about ten lines, no tables.
+     *
+     * @return the title, the area text, the reasons and the note
+     */
     public String summary() {
         StringBuilder text = new StringBuilder("FINAL IMAGE ASSESSMENT\n" + title() + "\n\nANOMALOUS AREA\n" + areaText() + "\n\nWHY?\n");
         for (String reason : reasons) text.append("- ").append(reason).append('\n');
         return text + "\n" + NOTE;
     }
 
-    /** Full technical text for the Advanced details view. */
+    /**
+     * Full technical text for the Advanced details view.
+     *
+     * @return the summary, then the decision evidence, the descriptive context and the limitations
+     */
     public String details() {
         return summary() + "\n\nDECISION EVIDENCE\n" + decisionEvidence
                 + "\n\nDESCRIPTIVE CONTEXT (not decision votes)\n" + descriptiveMeasurements
                 + "\n\nLIMITATIONS\n" + LIMITATIONS + "\n";
     }
 
+    /**
+     * Judges a finished analysis.
+     * If the measurements are missing or invalid, the outcome is INCONCLUSIVE
+     * and no area is reported.
+     *
+     * @param a the analysis, with all measurements filled in
+     * @return the assessment
+     */
     public static TamperingAssessment evaluate(Analysis a) {
         if (!valid(a)) return new TamperingAssessment(Outcome.INCONCLUSIVE,
                 List.of("Measurements are missing or invalid, so no decision can be supported."),
@@ -127,7 +211,7 @@ public final class TamperingAssessment {
                 copySupported ? copy.from : null, copySupported ? copy.to : null, local, flatFlags ? flat : null, flaggedPixels, total);
     }
 
-    // Pixels covered by flagged tiles and/or supported copy blocks, each pixel counted once.
+    // Pixels covered by flagged tiles, flat blocks and/or supported copy blocks. Each pixel is counted once.
     private static long flaggedArea(Analysis a, LocalAnomaly local, List<CopyMove.Match> pairs, FlatPatch flat) {
         if (pairs == null && flat == null) return local.available ? local.flaggedPixels : 0;
         boolean[][] covered = new boolean[a.height][a.width];
@@ -179,7 +263,8 @@ public final class TamperingAssessment {
         CopyResult(Kind kind, String reason, String evidence) { this.kind = kind; this.reason = reason; this.evidence = evidence; }
     }
 
-    // The earlier exact-copy rule, now only one specialised input of the final assessment.
+    // Judge the copy-move result. It is only one input of the final assessment.
+    // A copy is SUPPORTED only when all pairs share one shift and form one source patch and one separate copy.
     private static CopyResult judgeCopy(Analysis a) {
         String evidence = "Retained candidate pairs: " + a.copyMove.matches.size()
                 + "; blocks checked: " + a.copyMove.blocksChecked + " of " + a.copyMove.blocksTotal
@@ -242,7 +327,7 @@ public final class TamperingAssessment {
                 && CopyMove.same(a.gray, m.x1, m.y1, m.x2, m.y2);
     }
 
-    // Side-connected source positions on the existing sampling grid, rather than a raw-count vote.
+    // True if the source blocks touch side by side on the 8 px grid (one connected patch).
     private static boolean connected(List<CopyMove.Match> pairs) {
         boolean[] seen = new boolean[pairs.size()];
         ArrayList<Integer> queue = new ArrayList<Integer>(); queue.add(0); seen[0] = true;
@@ -323,5 +408,11 @@ public final class TamperingAssessment {
         return text.toString();
     }
 
+    /**
+     * Writes a rectangle as text.
+     *
+     * @param r the rectangle
+     * @return text like {@code (x=1, y=2, w=3, h=4)}
+     */
     static String bounds(Rectangle r) { return "(x=" + r.x + ", y=" + r.y + ", w=" + r.width + ", h=" + r.height + ")"; }
 }

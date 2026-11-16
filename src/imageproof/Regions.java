@@ -2,24 +2,46 @@ package imageproof;
 
 import java.awt.Rectangle;
 
-// Splits the image into square tiles (64 x 64 by default) and measures each tile.
-// Edge tiles can be smaller when the size is not a multiple of 64.
-// Variation of a tile = average TVD between its histogram and the histograms
-// of its neighbours above, below, left and right.
-// High variation means the tile looks different from its neighbours. Normal object
-// edges do this too, so it is NOT a sign of editing by itself.
+/**
+ * Splits the image into square tiles (64 x 64 pixels by default) and measures each tile.
+ *
+ * <p>Tiles at the right and bottom edges can be smaller when the image size
+ * is not a multiple of 64.
+ * The variation of a tile is the average {@link Comparison#difference TVD}
+ * between its histogram and the histograms of its neighbours above, below,
+ * left and right.</p>
+ *
+ * <p>High variation means the tile looks different from its neighbours.
+ * Normal object edges do this too, so it is NOT a sign of editing by itself.
+ * {@link Noise}, {@link Edges} and {@link LocalAnomaly} use the same tile grid.</p>
+ */
 public class Regions {
 
+    /** Default tile size in pixels (64). */
     public static final int TILE = 64;
 
+    /** Tile side length in pixels. */
     public int tileSize;
+    /** Number of tile rows. */
     public int rows;
+    /** Number of tile columns. */
     public int cols;
+    /** Image width in pixels. */
     public int width;
+    /** Image height in pixels. */
     public int height;
-    public double[][][] histograms; // [row][col][bin]
-    public double[][] variation;    // [row][col], 0 to 1
+    /** Normalized gray histogram of each tile, as {@code [row][col][bin]}. */
+    public double[][][] histograms;
+    /** Variation of each tile, as {@code [row][col]}, from 0 to 1. */
+    public double[][] variation;
 
+    /**
+     * Builds the tile grid, the tile histograms and the tile variation values.
+     *
+     * @param gray     gray values as {@code gray[y][x]}; must not be empty
+     * @param tileSize tile side length in pixels (usually {@link #TILE})
+     * @return the measured tile grid
+     */
     public static Regions analyze(int[][] gray, int tileSize) {
         Regions r = new Regions();
         r.tileSize = tileSize;
@@ -45,7 +67,14 @@ public class Regions {
         return r;
     }
 
-    // Pixel rectangle covered by a tile.
+    /**
+     * Gives the pixel rectangle covered by one tile.
+     * Tiles at the right and bottom edges can be smaller than the tile size.
+     *
+     * @param row tile row, from 0
+     * @param col tile column, from 0
+     * @return the rectangle in image pixels
+     */
     public Rectangle bounds(int row, int col) {
         int x = col * tileSize;
         int y = row * tileSize;

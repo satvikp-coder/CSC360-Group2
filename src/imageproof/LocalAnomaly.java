@@ -3,36 +3,75 @@ package imageproof;
 import java.awt.Rectangle;
 import java.util.Arrays;
 
-// Local anomaly rule for ONE image. It only re-uses numbers that already exist
-// (tile TVD from Regions, residual variance from Noise, Sobel means from Edges).
-// A tile is "flagged" when ALL of these hold:
-//   1. Histogram: its neighbour TVD is a high outlier compared with the other tiles of THIS image
-//      (modified z-score >= 3.5, Iglewicz and Hoaglin) and at least MIN_TVD.
-//   2. Noise: its residual variance differs by a factor of NOISE_RATIO or more from the median of
-//      its neighbouring tiles (up to 8).
-//   3. Not explained by a boundary: its own edge strength is not itself a high outlier (z >= 3.5).
-//   4. Agreement: at least one of its 8 neighbours also meets 1-3 (isolated tiles are ignored).
-// Edge strength is NOT a vote; it only explains boundaries (rule 3).
-// The result is a measured area, not a probability of editing.
+/**
+ * Local anomaly rule for ONE image. It only re-uses numbers that already exist:
+ * tile TVD from {@link Regions}, residual variance from {@link Noise} and
+ * Sobel means from {@link Edges}.
+ *
+ * <p>A tile is "flagged" when ALL of these hold:</p>
+ * <ol>
+ * <li>Histogram: its neighbour TVD is a high outlier compared with the other
+ * tiles of THIS image (modified z-score at least {@link #Z_LIMIT}, from
+ * Iglewicz and Hoaglin) and the TVD is at least {@link #MIN_TVD}.</li>
+ * <li>Noise: its residual variance differs by a factor of {@link #NOISE_RATIO}
+ * or more (larger or smaller) from the median of its neighbouring tiles
+ * (up to 8). At least {@link #MIN_NEIGHBOURS} neighbours are needed, and the
+ * comparison is skipped when both variances are below {@link #NOISE_FLOOR}.</li>
+ * <li>Not explained by a boundary: its own edge strength is not itself a high
+ * outlier (modified z-score at least {@link #Z_LIMIT}).</li>
+ * <li>Agreement: at least one of its 8 neighbours also meets rules 1 to 3.
+ * Isolated tiles are ignored.</li>
+ * </ol>
+ *
+ * <p>Edge strength is NOT a vote. It only explains boundaries (rule 3).</p>
+ *
+ * <p>The result is a MEASURED AREA of unusual tiles. It is not a probability
+ * of editing or forgery. Tiles can be unusual for normal reasons, and an image
+ * with no flagged tiles is not proven to be authentic.
+ * {@link TamperingAssessment} turns this area into a cautious summary.</p>
+ */
 public class LocalAnomaly {
 
-    public static final double Z_LIMIT = 3.5;       // standard modified z-score cut-off
-    public static final double MIN_TVD = 0.10;      // ignore tiny absolute histogram differences
-    public static final double NOISE_RATIO = 2.0;   // noise at least 2x larger or smaller than the neighbour median
-    public static final double NOISE_FLOOR = 4.0;   // variance below this (std < 2 gray levels) is not compared
-    public static final int MIN_NEIGHBOURS = 3;     // neighbours needed for a noise comparison
-    public static final int MIN_TILES = 9;          // fewer tiles cannot give "nearby" context
+    /** Modified z-score cut-off (3.5). */
+    public static final double Z_LIMIT = 3.5;
+    /** Smallest neighbour TVD (0.10) that can count; tiny absolute differences are ignored. */
+    public static final double MIN_TVD = 0.10;
+    /** Noise must be at least this many times larger or smaller (2) than the neighbour median. */
+    public static final double NOISE_RATIO = 2.0;
+    /** Variance below this (std below 2 gray levels) is not compared. */
+    public static final double NOISE_FLOOR = 4.0;
+    /** Neighbours needed for a noise comparison (3). */
+    public static final int MIN_NEIGHBOURS = 3;
+    /** Fewer tiles than this (9) cannot give "nearby" context. */
+    public static final int MIN_TILES = 9;
 
+    /** True if the rule could run on this image. */
     public boolean available;
+    /** Why the rule could not run (empty if it ran). */
     public String unavailableReason = "";
+    /** Rule 1 result per tile, as {@code [row][col]}. */
     public boolean[][] histogramUnusual;
+    /** Rule 2 result per tile, as {@code [row][col]}. */
     public boolean[][] noiseUnusual;
+    /** True for tiles whose edge strength is a high outlier (rule 3 fails), as {@code [row][col]}. */
     public boolean[][] boundaryExplained;
+    /** True for tiles that meet all four rules, as {@code [row][col]}. */
     public boolean[][] flagged;
-    public int candidateTiles;  // tiles meeting rules 1-3 before the agreement check
+    /** Number of tiles meeting rules 1 to 3 before the agreement check. */
+    public int candidateTiles;
+    /** Number of flagged tiles. */
     public int flaggedTiles;
-    public long flaggedPixels;  // actual pixel area of flagged tiles (edge tiles are smaller)
+    /** Actual pixel area of the flagged tiles (edge tiles are smaller). */
+    public long flaggedPixels;
 
+    /**
+     * Applies the rules to a finished analysis.
+     *
+     * @param a an analysis with regions, noise and edges filled in
+     * @return the per-tile results; {@link #available} is false (with a reason)
+     *         if the image has fewer than {@link #MIN_TILES} tiles or the tiles
+     *         are almost identical
+     */
     public static LocalAnomaly analyze(Analysis a) {
         LocalAnomaly result = new LocalAnomaly();
         Regions r = a.regions;
@@ -95,7 +134,7 @@ public class LocalAnomaly {
             }
         }
         if (n < MIN_NEIGHBOURS) {
-            return false; // not enough neighbours: no claim
+            return false; // Not enough neighbours, so make no claim.
         }
         double typical = median(Arrays.copyOf(others, n));
         double mine = a.noise[row][col];
@@ -120,8 +159,15 @@ public class LocalAnomaly {
         return false;
     }
 
-    // {median, scale}. scale = 1.4826 * MAD, or 1.253314 * mean absolute deviation if MAD is 0.
-    // Scale 0 means all tiles are the same.
+    /**
+     * Median and robust scale of all values in a grid.
+     * The scale is {@code 1.4826 * MAD} (median absolute deviation), or
+     * {@code 1.253314 * mean absolute deviation} if the MAD is 0.
+     * A scale of 0 means all values are the same.
+     *
+     * @param grid a non-empty rectangular grid of values
+     * @return an array {@code {median, scale}}
+     */
     static double[] robust(double[][] grid) {
         int count = grid.length * grid[0].length;
         double[] values = new double[count];
@@ -147,10 +193,23 @@ public class LocalAnomaly {
         return new double[]{middle, scale};
     }
 
+    /**
+     * Modified z-score: {@code (value - median) / scale}.
+     *
+     * @param value the value to score
+     * @param stats {@code {median, scale}} from {@link #robust(double[][])}
+     * @return the score
+     */
     static double z(double value, double[] stats) {
         return (value - stats[0]) / stats[1];
     }
 
+    /**
+     * Median of the values. The array is sorted in place.
+     *
+     * @param values a non-empty array
+     * @return the middle value (or the mean of the two middle values)
+     */
     static double median(double[] values) {
         Arrays.sort(values);
         int n = values.length;

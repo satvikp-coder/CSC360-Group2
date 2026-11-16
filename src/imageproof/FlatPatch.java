@@ -3,30 +3,60 @@ package imageproof;
 import java.awt.Rectangle;
 import java.util.ArrayList;
 
-// Finds solid-colour patches (like a Paint fill) in an otherwise noisy image.
-// Camera noise makes real photos almost never contain a 4 x 4 block of exactly equal gray values,
-// but a solid fill does. A block counts as flat when all 16 pixels are equal and the value is not
-// 0 or 255 (clipped shadows and highlights are naturally constant).
-// A patch is a group of at least MIN_BLOCKS connected flat blocks with the SAME value that contains
-// a solid 3 x 3 block core (so thin text bars and strokes are ignored).
-// The test only runs when most of the image is noisy (MIN_NOISY_SHARE), because noise-free art,
-// screenshots and heavily smoothed JPEGs contain flat areas naturally.
-// Limits: text and thin strokes are ignored; a fill that was blurred,
-// noised or re-compressed afterwards is not flat any more.
+/**
+ * Finds solid-colour patches (like a Paint fill) in an otherwise noisy image.
+ *
+ * <p>Camera noise makes real photos almost never contain a 4 x 4 block of
+ * exactly equal gray values, but a solid fill does. The rules are:</p>
+ * <ul>
+ * <li>A block is flat when all 16 pixels are equal and the value is not 0 or
+ * 255 (clipped shadows and highlights are naturally constant).</li>
+ * <li>A patch is a group of at least {@link #MIN_BLOCKS} connected flat blocks
+ * with the same value. Blocks touch if they are next to each other, also
+ * diagonally. The patch must contain a solid 3 x 3 block core (12 x 12
+ * pixels), so thin text bars and strokes are ignored.</li>
+ * <li>The test only runs when at least {@link #MIN_NOISY_SHARE} of the blocks
+ * are not flat, because noise-free art, screenshots and heavily smoothed JPEGs
+ * contain flat areas naturally. It does not run on JPEG files at all, or on
+ * images with fewer than {@link #MIN_GRID} blocks.</li>
+ * </ul>
+ *
+ * <p>Limits: text and thin strokes are ignored. A fill that was blurred,
+ * noised or re-compressed afterwards is not flat any more. A patch is a
+ * measurement, not proof of editing. {@link TamperingAssessment} uses the
+ * result.</p>
+ */
 public class FlatPatch {
 
+    /** Block side length in pixels (4). */
     public static final int BLOCK = 4;
-    public static final int MIN_BLOCKS = 6;          // at least 6 blocks = 96 pixels of one solid value
-    public static final double MIN_NOISY_SHARE = 0.6; // share of blocks with real pixel variation
-    public static final int MIN_GRID = 100;           // at least 100 blocks, otherwise no baseline
+    /** Smallest patch: 6 blocks, which is 96 pixels of one solid value. */
+    public static final int MIN_BLOCKS = 6;
+    /** Smallest share (0.6) of blocks that must have real pixel variation for the test to run. */
+    public static final double MIN_NOISY_SHARE = 0.6;
+    /** Smallest block grid for the test: 100 blocks, otherwise there is no baseline. */
+    public static final int MIN_GRID = 100;
 
+    /** True if the test could run on this image. */
     public boolean available;
+    /** Why the test could not run (empty if it ran). */
     public String unavailableReason = "";
-    public ArrayList<Rectangle> blocks = new ArrayList<Rectangle>();  // flat blocks of qualifying patches
-    public ArrayList<Rectangle> regions = new ArrayList<Rectangle>(); // bounding box of each patch
-    public long pixels;                                              // area of the flat blocks
+    /** The flat blocks of the qualifying patches. */
+    public ArrayList<Rectangle> blocks = new ArrayList<Rectangle>();
+    /** The bounding box of each patch. */
+    public ArrayList<Rectangle> regions = new ArrayList<Rectangle>();
+    /** Area in pixels of the flat blocks. */
+    public long pixels;
+    /** Share (0 to 1) of blocks that are not flat. */
     public double noisyShare;
 
+    /**
+     * Looks for solid-colour patches.
+     *
+     * @param gray gray values as {@code gray[y][x]}; must not be empty
+     * @param jpeg true if the file was a JPEG; the test is then not available
+     * @return the patches, or a result with {@link #available} false and a reason
+     */
     public static FlatPatch analyze(int[][] gray, boolean jpeg) {
         FlatPatch result = new FlatPatch();
         if (jpeg) {
@@ -39,7 +69,7 @@ public class FlatPatch {
             result.unavailableReason = "The image is too small to tell flat patches from normal content.";
             return result;
         }
-        int[][] value = new int[bh][bw]; // gray value of a flat block, -1 if not flat
+        int[][] value = new int[bh][bw]; // Gray value of a flat block, or -1 if not flat.
         int noisy = 0;
         for (int by = 0; by < bh; by++) {
             for (int bx = 0; bx < bw; bx++) {
@@ -57,7 +87,7 @@ public class FlatPatch {
                     noisy++;
                     value[by][bx] = -1;
                 } else if (first == 0 || first == 255) {
-                    value[by][bx] = -1; // clipped, naturally constant
+                    value[by][bx] = -1; // Clipped, so naturally constant.
                 } else {
                     value[by][bx] = first;
                 }
@@ -80,8 +110,8 @@ public class FlatPatch {
         return result;
     }
 
-    // True if some flat block has all 8 neighbours flat with the same value: a solid area at least
-    // 12 x 12 pixels. Thin bars and strokes (text, lines) never have one.
+    // True if some flat block has all 8 neighbours flat with the same value.
+    // That is a solid area of at least 12 x 12 pixels. Thin bars and text never have one.
     private static boolean hasSolidCore(ArrayList<int[]> group, int[][] value, int target) {
         for (int[] b : group) {
             boolean core = true;
@@ -102,7 +132,7 @@ public class FlatPatch {
         return false;
     }
 
-    // Flood fill over blocks with the same value; keep the group if it is big enough.
+    // Flood fill over touching blocks with the same value. Keep the group if it is big enough.
     private static void collect(int[][] value, boolean[][] seen, int startX, int startY, FlatPatch result) {
         ArrayList<int[]> queue = new ArrayList<int[]>();
         queue.add(new int[] {startX, startY});
