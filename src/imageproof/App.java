@@ -1,7 +1,9 @@
 package imageproof;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Point;
@@ -11,9 +13,12 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.util.Locale;
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -28,8 +33,9 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-// Main window: open one image, press Analyze, see the measurements.
-// Click a tile on the image to see that tile's histogram and numbers.
+// Main window: open one image, press Analyze, see a SHORT assessment.
+// Click a tile on the image to see that tile's histogram and a short summary.
+// Full tables are only in the "Advanced details" window.
 // Slow work (loading, analysing) runs in SwingWorker threads so the window stays responsive.
 public class App implements ActionListener, ChangeListener {
 
@@ -38,6 +44,7 @@ public class App implements ActionListener, ChangeListener {
 
     // What the image area shows. The index is used in showView().
     static final String[] VIEWS = {
+        "Flagged regions (summary)",
         "Regional variation",
         "Noise residual variance",
         "Edge strength (tile mean)",
@@ -49,13 +56,21 @@ public class App implements ActionListener, ChangeListener {
     JButton openButton = new JButton("Open image...");
     JButton analyzeButton = new JButton("Analyze");
     JComboBox<String> view = new JComboBox<String>(VIEWS);
-    JCheckBox showHeat = new JCheckBox("Show heatmap", true);
+    JCheckBox showHeat = new JCheckBox("Show overlay", true);
     JSlider opacity = new JSlider(0, 100, 50);
     JLabel status = new JLabel("Open a PNG or JPEG image.");
     ImagePanel imagePanel = new ImagePanel();
     HistogramPanel histogramPanel = new HistogramPanel("Gray histogram (whole image)");
-    JTextArea results = new JTextArea();
+    JTextArea regionSummary = new JTextArea(10, 30);
+    JPanel assessmentPanel = new JPanel(new BorderLayout(4, 4));
+    JLabel assessmentStatus = new JLabel("Not analyzed");
+    JLabel areaLabel = new JLabel(" ");
+    JLabel statsLabel = new JLabel(" ");
+    JTextArea assessmentReasons = new JTextArea(6, 30);
+    JButton wholeButton = new JButton("Whole-image histogram");
+    JButton advancedButton = new JButton("Advanced details...");
     JFileChooser chooser = new JFileChooser();
+    JDialog advancedDialog;
 
     LoadedImage current;   // image shown now, null if none
     Analysis analysis;     // results for the current image, null if not analysed
@@ -75,37 +90,89 @@ public class App implements ActionListener, ChangeListener {
         showHeat.addActionListener(this);
         opacity.addChangeListener(this);
         opacity.setPreferredSize(new Dimension(100, 20));
+        wholeButton.addActionListener(this);
+        wholeButton.setEnabled(false);
+        advancedButton.addActionListener(this);
+        advancedButton.setEnabled(false);
         imagePanel.addMouseListener(new ClickHandler());
+        nameControls();
 
-        JPanel top = new JPanel();
+        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 3));
         top.add(openButton);
         top.add(analyzeButton);
         top.add(view);
         top.add(showHeat);
         top.add(new JLabel("Opacity"));
         top.add(opacity);
-        top.add(status);
 
-        results.setEditable(false);
-        results.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
-        results.setLineWrap(true);
-        results.setWrapStyleWord(true);
-        results.setText(NOTE);
+        regionSummary.setEditable(false);
+        regionSummary.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        regionSummary.setLineWrap(true);
+        regionSummary.setWrapStyleWord(true);
+        regionSummary.setText(NOTE);
 
-        JPanel right = new JPanel(new GridLayout(2, 1, 5, 5));
-        right.add(histogramPanel);
-        right.add(new JScrollPane(results));
-        right.setPreferredSize(new Dimension(420, 500));
+        assessmentPanel.setBorder(BorderFactory.createTitledBorder("FINAL IMAGE ASSESSMENT"));
+        assessmentStatus.setFont(assessmentStatus.getFont().deriveFont(Font.BOLD, 15f));
+        areaLabel.setFont(areaLabel.getFont().deriveFont(Font.BOLD, 12f));
+        assessmentReasons.setEditable(false);
+        assessmentReasons.setLineWrap(true);
+        assessmentReasons.setWrapStyleWord(true);
+        assessmentReasons.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+        JPanel heading = new JPanel(new GridLayout(2, 1));
+        heading.setOpaque(false);
+        heading.add(assessmentStatus);
+        heading.add(areaLabel);
+        JPanel foot = new JPanel(new GridLayout(3, 1));
+        foot.setOpaque(false);
+        foot.add(statsLabel);
+        foot.add(new JLabel("<html>Area is measured, not a probability of editing.</html>"));
+        assessmentPanel.add(heading, BorderLayout.NORTH);
+        assessmentPanel.add(assessmentReasons, BorderLayout.CENTER);
+        assessmentPanel.add(foot, BorderLayout.SOUTH);
+        showAssessment(null);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        buttons.add(wholeButton);
+        buttons.add(advancedButton);
+        JPanel regionPanel = new JPanel(new BorderLayout(3, 3));
+        regionPanel.setBorder(BorderFactory.createTitledBorder("SELECTED REGION"));
+        regionPanel.add(new JScrollPane(regionSummary), BorderLayout.CENTER);
+        regionPanel.add(buttons, BorderLayout.SOUTH);
+
+        JPanel right = new JPanel(new BorderLayout(5, 5));
+        right.add(assessmentPanel, BorderLayout.NORTH);
+        right.add(histogramPanel, BorderLayout.CENTER);
+        right.add(regionPanel, BorderLayout.SOUTH);
+        right.setPreferredSize(new Dimension(450, 600));
 
         frame.setLayout(new BorderLayout(5, 5));
         frame.add(top, BorderLayout.NORTH);
         frame.add(imagePanel, BorderLayout.CENTER);
         frame.add(right, BorderLayout.EAST);
+        frame.add(status, BorderLayout.SOUTH);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setMinimumSize(new Dimension(700, 450));
-        frame.setSize(1000, 650);
+        frame.setMinimumSize(new Dimension(920, 700));
+        frame.setSize(1120, 800);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
+    }
+
+    // Names and tool tips for keyboard and assistive-technology users.
+    private void nameControls() {
+        openButton.getAccessibleContext().setAccessibleName("Open image");
+        analyzeButton.getAccessibleContext().setAccessibleName("Analyze image");
+        view.getAccessibleContext().setAccessibleName("Analysis view");
+        showHeat.getAccessibleContext().setAccessibleName("Show overlay");
+        opacity.getAccessibleContext().setAccessibleName("Overlay opacity");
+        wholeButton.getAccessibleContext().setAccessibleName("Show whole-image histogram");
+        advancedButton.getAccessibleContext().setAccessibleName("Advanced details");
+        regionSummary.getAccessibleContext().setAccessibleName("Selected region summary");
+        assessmentReasons.getAccessibleContext().setAccessibleName("Reasons for the assessment");
+        assessmentStatus.getAccessibleContext().setAccessibleName("Final assessment");
+        areaLabel.getAccessibleContext().setAccessibleName("Anomalous area");
+        imagePanel.getAccessibleContext().setAccessibleName("Image with overlay; click to select a region");
+        opacity.setToolTipText("Opacity of the overlay, 0 to 100 percent");
+        advancedButton.setToolTipText("Full tables, thresholds and copy-search counts");
     }
 
     public void actionPerformed(ActionEvent e) {
@@ -117,6 +184,10 @@ public class App implements ActionListener, ChangeListener {
             showView();
         } else if (e.getSource() == showHeat) {
             imagePanel.setShowHeat(showHeat.isSelected());
+        } else if (e.getSource() == wholeButton) {
+            showWholeImage();
+        } else if (e.getSource() == advancedButton) {
+            showAdvanced();
         }
     }
 
@@ -138,39 +209,74 @@ public class App implements ActionListener, ChangeListener {
         }
     }
 
+    // Only the histogram and the small region summary change. The assessment stays as it is.
     void selectTile(int row, int col) {
         Regions r = analysis.regions;
-        Rectangle b = r.bounds(row, col);
-        double[] h = r.histograms[row][col];
-        imagePanel.setSelected(b);
+        imagePanel.setSelected(r.bounds(row, col));
         histogramPanel.setTitle("Gray histogram of tile row " + row + ", col " + col);
-        histogramPanel.setValues(h);
-        String text = "Selected tile: row " + row + ", col " + col + "\n"
-                + "  Pixels x " + b.x + " to " + (b.x + b.width - 1) + ", y " + b.y + " to " + (b.y + b.height - 1)
-                + "  (" + b.width + " x " + b.height + ")\n"
-                + String.format("  Mean gray:          %.2f%n", Histogram.mean(h))
-                + String.format("  Standard deviation: %.2f%n", Histogram.standardDeviation(h))
-                + String.format("  Entropy:            %.3f bits%n", Histogram.entropy(h))
-                + String.format("  Variation (TVD):    %.3f%n", r.variation[row][col])
-                + String.format("  Noise variance:     %.2f%n", analysis.noise[row][col])
-                + String.format("  Edge strength:      %.2f%n", analysis.edges[row][col])
-                + "\n" + resultText(analysis);
-        results.setText(text);
-        results.setCaretPosition(0);
+        histogramPanel.setValues(r.histograms[row][col]);
+        regionSummary.setText(regionText(analysis, row, col));
+        regionSummary.setCaretPosition(0);
+        wholeButton.setEnabled(true);
+    }
+
+    // Back to the whole-image histogram.
+    void showWholeImage() {
+        imagePanel.setSelected(null);
+        wholeButton.setEnabled(false);
+        if (analysis == null) {
+            return;
+        }
+        histogramPanel.setTitle("Gray histogram (whole image)");
+        histogramPanel.setValues(analysis.histogram);
+        regionSummary.setText("Click a tile on the image to inspect it.");
+    }
+
+    // Short summary of one tile: about three measurements and one sentence.
+    static String regionText(Analysis a, int row, int col) {
+        Regions r = a.regions;
+        Rectangle b = r.bounds(row, col);
+        LocalAnomaly local = a.assessment == null ? null : a.assessment.local;
+        boolean known = local != null && local.available;
+        String meaning;
+        if (!known) {
+            meaning = "There is not enough nearby context to compare this region.";
+        } else if (local.flagged[row][col]) {
+            meaning = "This region and a neighbour differ from nearby content in brightness distribution and noise. "
+                    + "Normal textures and object boundaries can cause this.";
+        } else if (local.boundaryExplained[row][col]) {
+            meaning = "Strong edges here explain much of the difference. This looks like an ordinary boundary or texture.";
+        } else if (local.histogramUnusual[row][col] || local.noiseUnusual[row][col]) {
+            meaning = "One measurement differs from nearby regions, but the others do not support it.";
+        } else {
+            meaning = "Nothing here stood out from nearby regions.";
+        }
+        String flagText = !known ? "not available" : (local.flagged[row][col] ? "yes" : "no");
+        return String.format(Locale.ROOT, "Position: (%d, %d)   Size: %d × %d\nFlagged by the rule: %s\n"
+                + "Histogram difference: %.2f\nNoise variation: %.1f\nEdge strength: %.1f\n\nInterpretation: %s",
+                b.x, b.y, b.width, b.height, flagText, r.variation[row][col], a.noise[row][col], a.edges[row][col], meaning);
     }
 
     void openImage() {
         if (chooser.showOpenDialog(frame) != JFileChooser.APPROVE_OPTION) {
             return; // cancelled: keep the current image
         }
+        loadImage(chooser.getSelectedFile());
+    }
+
+    // Shared by the chooser and the desktop integration test; no file work runs on the EDT.
+    void loadImage(File file) {
         jobNumber++;
         busy = true;
+        showAssessment(null);
         updateButtons();
-        status.setText("Loading " + chooser.getSelectedFile().getName() + "...");
-        new LoadWorker(chooser.getSelectedFile(), jobNumber).execute();
+        status.setText("Loading " + file.getName() + "...");
+        new LoadWorker(file, jobNumber).execute();
     }
 
     void analyze() {
+        if (current == null || busy) return;
+        clearResults();
         jobNumber++;
         busy = true;
         updateButtons();
@@ -185,14 +291,22 @@ public class App implements ActionListener, ChangeListener {
     // Clear everything that belonged to the previous image.
     void clearResults() {
         analysis = null;
+        showAssessment(null);
         view.setEnabled(false);
+        wholeButton.setEnabled(false);
+        advancedButton.setEnabled(false);
+        if (advancedDialog != null) {
+            advancedDialog.dispose();
+            advancedDialog = null;
+        }
         imagePanel.setImage(current.image);
         imagePanel.setHeat(null, 0, "");
         imagePanel.setPairs(null);
+        imagePanel.setFlags(null, 0);
         imagePanel.setSelected(null);
         histogramPanel.setTitle("Gray histogram (whole image)");
         histogramPanel.setValues(null);
-        results.setText(NOTE);
+        regionSummary.setText(NOTE);
     }
 
     String describe(LoadedImage loaded) {
@@ -202,13 +316,16 @@ public class App implements ActionListener, ChangeListener {
 
     void showResults(Analysis a) {
         analysis = a;
+        showAssessment(a.assessment);
         histogramPanel.setTitle("Gray histogram (whole image)");
         histogramPanel.setValues(a.histogram);
         imagePanel.setSelected(null);
         view.setEnabled(true);
+        advancedButton.setEnabled(true);
+        wholeButton.setEnabled(false);
+        view.setSelectedIndex(0); // the summary view shows exactly the flagged regions
         showView();
-        results.setText("Click a tile on the image to inspect it.\n\n" + resultText(a));
-        results.setCaretPosition(0);
+        regionSummary.setText("Click a tile on the image to inspect it.");
     }
 
     // Put the chosen measurement on the image.
@@ -220,28 +337,96 @@ public class App implements ActionListener, ChangeListener {
         int choice = view.getSelectedIndex();
         imagePanel.setImage(current.image);
         imagePanel.setPairs(null);
+        imagePanel.setFlags(null, 0);
+        imagePanel.setHeat(null, 0, "");
+        TamperingAssessment t = analysis.assessment;
         if (choice == 0) {
-            imagePanel.setHeat(analysis.regions.variation, size, "Regional variation (TVD to neighbour tiles)");
+            if (t != null && t.local != null && t.local.available) {
+                imagePanel.setFlags(t.local.flagged, size);
+            }
+            if (t != null && t.sourceBounds() != null) {
+                imagePanel.setPairs(analysis.copyMove.matches);
+            }
         } else if (choice == 1) {
-            imagePanel.setHeat(analysis.noise, size, "Noise residual variance per tile");
+            imagePanel.setHeat(analysis.regions.variation, size, "Regional variation (TVD to neighbour tiles)");
         } else if (choice == 2) {
-            imagePanel.setHeat(analysis.edges, size, "Mean Sobel edge strength per tile");
+            imagePanel.setHeat(analysis.noise, size, "Noise residual variance per tile");
         } else if (choice == 3) {
-            imagePanel.setImage(analysis.edgeMap);
-            imagePanel.setHeat(null, 0, "");
+            imagePanel.setHeat(analysis.edges, size, "Mean Sobel edge strength per tile");
         } else if (choice == 4) {
-            imagePanel.setHeat(null, 0, "");
+            imagePanel.setImage(analysis.edgeMap);
+        } else if (choice == 5) {
             imagePanel.setPairs(analysis.copyMove.matches);
+        }
+        // Ordinary measurement maps also outline the tiles the rule flagged, so the two can be told apart.
+        if ((choice == 1 || choice == 2 || choice == 3) && t != null && t.local != null && t.local.available) {
+            imagePanel.setFlags(t.local.flagged, size);
         }
     }
 
-    String resultText(Analysis a) {
+    // Short statistics line: only numbers that were really calculated.
+    static String statsText(Analysis a) {
+        double highest = 0;
+        for (double[] row : a.regions.variation) {
+            for (double value : row) {
+                highest = Math.max(highest, value);
+            }
+        }
+        return String.format(Locale.ROOT, "Brightness %.1f / 255 | Contrast (std) %.1f | Entropy %.2f bits | Highest regional difference %.2f",
+                a.mean, a.standardDeviation, a.entropy, highest);
+    }
+
+    void showAssessment(TamperingAssessment assessment) {
+        Color background = new Color(236, 238, 240);
+        assessmentStatus.setText(assessment == null ? "Not analyzed" : assessment.title());
+        areaLabel.setText(assessment == null ? " " : "ANOMALOUS AREA: " + assessment.areaText());
+        StringBuilder explanation = new StringBuilder("WHY?\n");
+        if (assessment == null) {
+            explanation.append("Analyze the current image to calculate its assessment.");
+            statsLabel.setText(" ");
+        } else {
+            if (assessment.outcome == TamperingAssessment.Outcome.POSSIBLE_TAMPERING) background = new Color(255, 239, 207);
+            if (assessment.outcome == TamperingAssessment.Outcome.NO_CLEAR_INDICATORS) background = new Color(248, 248, 248);
+            for (String reason : assessment.reasons) explanation.append("- ").append(reason).append('\n');
+            explanation.append('\n').append(TamperingAssessment.NOTE);
+            statsLabel.setText(analysis == null ? " " : "<html>" + statsText(analysis).replace(" | Entropy", "<br>Entropy") + "</html>");
+        }
+        assessmentPanel.setBackground(background);
+        assessmentReasons.setBackground(background);
+        assessmentReasons.setText(explanation.toString());
+        assessmentReasons.setCaretPosition(0);
+    }
+
+    // Everything in full: assessment, rules, tables, copy-move counts. Read-only text in its own window.
+    void showAdvanced() {
+        if (analysis == null) {
+            return;
+        }
+        if (advancedDialog != null) {
+            advancedDialog.dispose();
+        }
+        JTextArea text = new JTextArea(advancedText(analysis));
+        text.setEditable(false);
+        text.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        text.setLineWrap(true);
+        text.setWrapStyleWord(true);
+        text.setCaretPosition(0);
+        text.getAccessibleContext().setAccessibleName("Advanced details");
+        advancedDialog = new JDialog(frame, "Advanced details", false);
+        advancedDialog.add(new JScrollPane(text));
+        advancedDialog.setSize(760, 600);
+        advancedDialog.setLocationRelativeTo(frame);
+        advancedDialog.setVisible(true);
+    }
+
+    String advancedText(Analysis a) {
         Regions r = a.regions;
-        String text = "Image: " + describe(current) + "\n\n"
+        return (a.assessment == null ? "" : a.assessment.details() + "\n")
+                + "Image: " + describe(current) + "\n\n"
                 + "Whole image\n"
-                + String.format("  Mean gray:          %.2f%n", a.mean)
-                + String.format("  Standard deviation: %.2f%n", a.standardDeviation)
-                + String.format("  Entropy:            %.3f bits (0 to 8)%n", a.entropy)
+                + String.format(Locale.ROOT, "  Mean gray:          %.2f%n", a.mean)
+                + String.format(Locale.ROOT, "  Standard deviation: %.2f%n", a.standardDeviation)
+                + String.format(Locale.ROOT, "  Entropy:            %.3f bits (0 to 8)%n", a.entropy)
                 + "\nRegional variation, " + r.rows + " x " + r.cols + " tiles of " + r.tileSize + " px\n"
                 + "(average TVD to the tiles above, below, left, right; 0 = same, 1 = no overlap)\n"
                 + grid(r.variation, "%6.3f")
@@ -253,7 +438,6 @@ public class App implements ActionListener, ChangeListener {
                 + grid(a.edges, "%8.2f")
                 + "\n" + copyMoveText(a.copyMove)
                 + "\n" + NOTE;
-        return text;
     }
 
     static String copyMoveText(CopyMove c) {
@@ -282,7 +466,7 @@ public class App implements ActionListener, ChangeListener {
         StringBuilder text = new StringBuilder();
         for (int row = 0; row < values.length; row++) {
             for (int col = 0; col < values[row].length; col++) {
-                text.append(String.format(format, values[row][col]));
+                text.append(String.format(Locale.ROOT, format, values[row][col]));
             }
             text.append("\n");
         }
@@ -321,6 +505,7 @@ public class App implements ActionListener, ChangeListener {
             } catch (Exception e) {
                 // Bad file: keep the old image and its results.
                 showError(errorText(e));
+                showAssessment(analysis == null ? null : analysis.assessment);
                 if (current == null) {
                     status.setText("Open a PNG or JPEG image.");
                 } else {

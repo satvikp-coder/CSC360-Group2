@@ -14,6 +14,8 @@ public class AllTests {
         CopyMoveTest.main(args);
         ImagePanelTest.main(args);
         SamplesTest.main(args);
+        TamperingAssessmentTest.main(args);
+        LocalAnomalyTest.main(args);
         System.out.println("All tests passed");
     }
 }
