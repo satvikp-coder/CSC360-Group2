@@ -10,7 +10,11 @@ Use simple, explainable Java image processing (histograms first) to describe one
 
 In scope (professor-directed revision, 2026-11-12): **one** uploaded PNG/JPEG; global histogram and statistics; regional histograms and heatmap; noise residual; Sobel edges; bounded copy-move candidates; synthetic samples with known edits; measured results.
 
-Out of scope: authenticity/forgery verdicts, thresholds or probabilities, machine learning, outside libraries or services, rotation/scale-invariant copy detection, two-image comparison screen.
+Out of scope: definitive authenticity/forgery verdicts, calibrated probabilities,
+machine learning, outside libraries or services, rotation/scale-invariant copy
+detection and a two-image comparison screen. A limited explainable exact-duplication
+assessment is requested in #40; its geometry rule and known failures are documented
+in EVALUATION.md. It does not turn generic histogram/noise/edge extrema into votes.
 
 ## Decisions taken
 
@@ -27,6 +31,7 @@ Out of scope: authenticity/forgery verdicts, thresholds or probabilities, machin
 | Tile size | 64 px | Enough pixels per histogram, small enough to localise |
 | Copy-move | Exact 16 px blocks, step 8, limits | Simple and bounded; limits shown on screen |
 | Threshold | None | Not supported by evaluation; see `EVALUATION.md` |
+| Assessment | Cautious exact-duplication heuristic | Complete, unique, connected 2D matches; uncertain evidence is inconclusive, missing matches never certify authenticity |
 
 ## Test plan and results
 

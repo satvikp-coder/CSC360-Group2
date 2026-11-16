@@ -16,13 +16,32 @@ Open **one** PNG or JPEG image and press **Analyze**. The program measures:
 | Sobel edges | Edge strength `sqrt(gx² + gy²)` per pixel, mean per tile, and an edge map |
 | Copy-move candidates | Exact 16 x 16 textured blocks that appear twice, far apart, with the same shift |
 
-Results are shown as a heatmap on the image, a histogram and numbers. Click a tile to see its own histogram and values.
+Results include a **FINAL IMAGE ASSESSMENT** box with plain-language reasons,
+a heatmap, a histogram and measurements. Click a tile to inspect it.
+
+The assessment is a limited **exact-duplication heuristic**:
+- **Possible tampering detected:** complete, unique exact matches form a connected 2D patch with one shift and a separate partner footprint. Naturally repeated objects can still produce this result.
+- **No clear tampering indicators:** no retained exact-copy group was found in the completed configured search. This does **not** certify an image clean or authentic; inserted objects and shuffled pixels are known misses.
+- **Inconclusive:** search limits, ambiguous/weak matches, insufficient texture/size or invalid measurements prevent a supported result.
+
+The box stays visible above the detailed numbers. Positive results open the
+existing copy-candidate view; green/magenta boxes show the actual matching blocks.
+The detailed evidence lists counts, shift, patch coordinates and search limits.
+Histogram/TVD/noise/edge maxima are labelled **descriptive context**, not independent
+votes. See the [exact rule and limitations](docs/EVALUATION.md#final-assessment-rule).
+
+![Final assessment and matching patches on Windows, Java 17](docs/images/assessment-copy-windows.png)
+
+See [recorded desktop checks and remaining manual checks](docs/MANUAL_TEST.md#recorded-feature-verification--2026-11-16).
 
 ![Regional variation with a selected tile](docs/images/app-tile.png)
 
 ![Copy-move candidates on the copied sample](docs/images/app-copy-move.png)
 
-**This is an educational tool, not a forensic verdict.** Unusual numbers do not prove an image was edited, and normal numbers do not prove it is authentic. Object edges, texture, brightness changes, compression and repeated patterns all change these values. There is no threshold, probability or "edited / not edited" answer.
+**This is an educational tool, not a forensic verdict.** The heuristic describes
+specific evidence and its limits; it is not a calibrated probability or a
+definitive edited/unedited answer. Object boundaries, texture and repeated
+patterns can respond strongly. Missing matches do not establish authenticity.
 
 ## Setup
 
@@ -73,6 +92,7 @@ Cancelling the file chooser keeps the current image. A broken or unsupported fil
 | `Regions` | tiles, tile histograms, neighbour variation |
 | `Noise`, `Edges`, `CopyMove` | the three diagnostics |
 | `Analysis` | runs everything for one image |
+| `TamperingAssessment` | cautious exact-duplication rule, reasons, candidate footprints and descriptive context |
 | `LoadedImage` | reads a PNG/JPEG with clear errors |
 | `App`, `ImagePanel`, `HistogramPanel` | the Swing window |
 

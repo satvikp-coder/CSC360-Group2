@@ -20,7 +20,17 @@ A short live demo using only the committed `samples/`, plus the questions we exp
 | 6 | Open `shuffled.png`, **Analyze** | Same mean, std and entropy as the original although it is pure noise: a global histogram ignores pixel positions. |
 | 7 | Open `corrupt.png`, then `unsupported.txt` | Error dialog; the previous image and results stay. |
 
-Close with the limitations slide: no threshold, no probability, no "edited / not edited" answer.
+## Final assessment demonstration
+
+The new **FINAL IMAGE ASSESSMENT** box stays above the numeric tables. Show:
+original -> **No clear tampering indicators**, copied PNG/JPEG -> **Possible
+tampering detected**, repeated pattern -> **Inconclusive**, inserted object ->
+**No clear indicators (a known missed change)**. Explain the reasons and search
+limits, the unique connected exact-match footprints and the context-only maxima.
+Positive results automatically open the existing candidate-outline view.
+
+Close with the limitations: no probability or definitive edited/unedited answer.
+A paired repeated motif can produce the same evidence and a false warning.
 
 ## Diagrams for slides
 
@@ -36,7 +46,7 @@ Close with the limitations slide: no threshold, no probability, no "edited / not
 | Why normalize? | Tiles and images have different pixel counts; dividing by the total makes histograms comparable. |
 | Why total variation distance? | Simple formula, always between 0 and 1, symmetric. It is not the percentage of edited pixels. |
 | Why 64 px tiles? | 4,096 pixels give a usable histogram per tile, and tiles are still small enough to point at a region. Edge tiles can be smaller. |
-| Why no threshold? | One synthetic original and a few variants cannot support one. Normal edges, texture and compression move the same numbers. |
+| What supports the final assessment? | Complete, unique exact matches in one connected 2D patch relationship; no weighted score or calibrated probability. Generic map values are context, not independent votes. See EVALUATION.md for the exact rule. |
 | How are transparent and gray images handled? | Transparent pixels are mixed onto white (what a viewer shows); gray images read the stored sample, because `getRGB` changes gray values (issues #22, #23). |
 | How does copy-move work? | 16 x 16 blocks every 8 px, flat blocks skipped, exact equal blocks that do not touch, grouped by shift; a shift needs at least 3 matches. Limits keep it fast and are reported on screen. |
 | What can copy-move not find? | Copies that are rotated, scaled, recompressed differently, or moved by a shift that is not a multiple of 8. |

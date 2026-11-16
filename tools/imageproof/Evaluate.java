@@ -13,7 +13,7 @@ public class Evaluate {
             folder = args[0];
         }
         System.out.println("file,width,height,format,mean,std,entropy,max_variation,max_variation_tile,"
-                + "max_noise,max_noise_tile,max_edge,max_edge_tile,copy_move_pairs,copy_move_shift,truncated");
+                + "max_noise,max_noise_tile,max_edge,max_edge_tile,copy_move_pairs,copy_move_shift,truncated,assessment,assessment_reason");
         for (int i = 0; i < SampleGenerator.FILES.length; i++) {
             String name = SampleGenerator.FILES[i];
             LoadedImage loaded;
@@ -32,7 +32,8 @@ public class Evaluate {
             System.out.println(name + "," + a.width + "," + a.height + "," + loaded.format + ","
                     + String.format("%.2f,%.2f,%.3f,", a.mean, a.standardDeviation, a.entropy)
                     + max(a.regions.variation, "%.3f") + "," + max(a.noise, "%.2f") + "," + max(a.edges, "%.2f") + ","
-                    + a.copyMove.matches.size() + "," + shift + "," + a.copyMove.truncated);
+                    + a.copyMove.matches.size() + "," + shift + "," + a.copyMove.truncated + "," + a.assessment.outcome
+                    + ",\"" + a.assessment.reasons.get(0).replace("\"", "\"\"") + "\"");
         }
     }
 

@@ -15,7 +15,10 @@ This repository is for **CSC360 Group 2**. Contributions should support the assi
 - Prefer clear, understandable code suited to an academic demonstration.
 - Separate image loading, measurements, and presentation: maths classes contain no Swing code.
 - Add tests for correct calculations and invalid inputs; `mvn test` must pass.
-- Do not label an image as edited, forged or authentic; show measurements only.
+- Do not label an image as confirmed edited, forged or authentic. The documented
+  final assessment may report possible duplication, no clear indicators or an
+  inconclusive result, with measured reasons and explicit limitations; never a
+  probability or authenticity verdict.
 - Avoid including confidential images, personal information, credentials, or unlicensed sample data.
 
 ## Documentation updates
