@@ -17,6 +17,7 @@ public class Analysis {
     public double[][] edges;      // mean Sobel strength per tile
     public BufferedImage edgeMap; // Sobel strength as a gray picture
     public CopyMove copyMove;     // copy-move candidates
+    public TamperingAssessment assessment; // cautious rule over the completed measurements
 
     public static Analysis run(BufferedImage image) {
         Analysis a = new Analysis();
@@ -32,6 +33,7 @@ public class Analysis {
         a.edges = Edges.tileStrength(a.gray, a.regions);
         a.edgeMap = Edges.map(a.gray);
         a.copyMove = CopyMove.analyze(a.gray);
+        a.assessment = TamperingAssessment.evaluate(a);
         return a;
     }
 }
