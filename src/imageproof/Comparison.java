@@ -1,14 +1,31 @@
 package imageproof;
 
-// Total variation distance (TVD) between two normalized histograms.
-// TVD = 0.5 * sum(|p[i] - q[i]|)
-// 0 = same distribution, 1 = no overlap at all.
-// It is NOT the percentage of edited pixels.
+/**
+ * Total variation distance (TVD) between two normalized histograms.
+ *
+ * <p>{@code TVD = 0.5 * sum(|p[i] - q[i]|)} over the 256 bins.
+ * The result is between 0 and 1. 0 means the same distribution.
+ * 1 means no overlap at all.
+ * It is NOT the percentage of edited pixels.</p>
+ *
+ * <p>{@link Regions} uses it to compare neighbouring tiles.
+ * {@link LocalAnomaly} and {@link TamperingAssessment} use those results.</p>
+ */
 public class Comparison {
 
-    // How far the sum of a histogram may be from 1 (rounding error).
+    /** How far the sum of a histogram may be from 1 (allows rounding error). */
     public static final double TOLERANCE = 1e-9;
 
+    /**
+     * Computes the total variation distance of two histograms.
+     *
+     * @param p first normalized histogram (256 values)
+     * @param q second normalized histogram (256 values)
+     * @return the distance, from 0 (same) to 1 (no overlap)
+     * @throws IllegalArgumentException if a histogram is {@code null}, does not
+     *         have 256 bins, has a NaN, infinite or negative value, or does
+     *         not add up to 1 (within {@link #TOLERANCE})
+     */
     public static double difference(double[] p, double[] q) {
         check(p);
         check(q);

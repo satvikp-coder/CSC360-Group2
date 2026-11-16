@@ -5,9 +5,15 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import javax.swing.JPanel;
 
-// Draws a normalized 256-bin histogram as bars. The tallest bar fills the plot height.
+/**
+ * Swing panel that draws a normalized 256-bin histogram as bars.
+ * The tallest bar fills the plot height, so only the shape is shown,
+ * not the exact values. {@link App} uses it to show the histogram of the
+ * whole image and of the selected tile (see {@link Histogram}).
+ */
 public class HistogramPanel extends JPanel {
 
+    /** Colour of the bars. */
     public static final Color BAR = new Color(35, 105, 175);
 
     // Space around the plot for text.
@@ -15,16 +21,28 @@ public class HistogramPanel extends JPanel {
     static final int TOP = 30;
     static final int BOTTOM = 25;
 
+    /** Text drawn above the plot. */
     private String title;
+    /** The 256 normalized bins to draw; null = nothing yet. */
     private double[] values;
 
+    /**
+     * Creates an empty histogram panel.
+     *
+     * @param title the text drawn above the plot
+     */
     public HistogramPanel(String title) {
         this.title = title;
         setBackground(Color.WHITE);
         setPreferredSize(new Dimension(400, 220));
     }
 
-    // Show new values (256 bins adding to 1). null clears the plot.
+    /**
+     * Shows new values and repaints.
+     *
+     * @param p a normalized histogram of 256 bins, or {@code null} to clear the plot
+     * @throws IllegalArgumentException if {@code p} is not {@code null} and does not have 256 values
+     */
     public void setValues(double[] p) {
         if (p != null && p.length != Histogram.BINS) {
             throw new IllegalArgumentException("Need 256 bins");
@@ -33,11 +51,21 @@ public class HistogramPanel extends JPanel {
         repaint();
     }
 
+    /**
+     * Changes the title and repaints.
+     *
+     * @param title the new text drawn above the plot
+     */
     public void setTitle(String title) {
         this.title = title;
         repaint();
     }
 
+    /**
+     * Draws the title, the frame, the axis labels and one bar per gray value.
+     *
+     * @param g the graphics context given by Swing
+     */
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         int plotWidth = getWidth() - 2 * LEFT;

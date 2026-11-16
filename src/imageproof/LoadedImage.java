@@ -8,14 +8,32 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 
-// One image file read from disk: the pixels plus its real format (PNG or JPEG).
+/**
+ * One image file read from disk: the pixels plus its real format (PNG or JPEG).
+ *
+ * <p>The format comes from the file content, not from the file name.
+ * {@link App} loads files with {@link #load(File)} and then passes the image
+ * and format to {@link Analysis}.</p>
+ */
 public class LoadedImage {
 
+    /** The file that was read. */
     public File file;
+    /** The decoded pixels. */
     public BufferedImage image;
+    /** The real format: "PNG" or "JPEG". */
     public String format;
 
-    // Reads a PNG or JPEG. Throws IOException with a message the user can understand.
+    /**
+     * Reads a PNG or JPEG file.
+     * The size is checked from the file header before the pixels are decoded.
+     *
+     * @param file the image file
+     * @return the loaded image with its format
+     * @throws IOException with a message the user can understand, if the file
+     *         cannot be opened, is not a PNG or JPEG, is bigger than
+     *         {@link Histogram#MAX_PIXELS} pixels, or is damaged
+     */
     public static LoadedImage load(File file) throws IOException {
         ImageInputStream input = ImageIO.createImageInputStream(file);
         if (input == null) {

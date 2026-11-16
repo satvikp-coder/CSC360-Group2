@@ -41,6 +41,7 @@ copy warning; global brightness/blur and inserted flat objects are missed.
 - [pixel-to-histogram.svg](images/pixel-to-histogram.svg): one pixel to one gray value, then counting into bins.
 - [histogram-compare.svg](images/histogram-compare.svg): how TVD adds up the gaps between two histograms (16 bins shown for readability; the app uses 256).
 - Screenshots of the real window: `images/app-*.png` and `images/desktop-*.png`.
+- Animated demos of the real window: [`gifs/`](gifs/) (upload and analyze, histogram and regions, forensic views).
 
 ## Questions to expect
 

@@ -15,10 +15,10 @@
   </properties>
 
   <build>
-    <!-- App code in src/, tests in tests/, sample tools in tools/ -->
+    <!-- App code in src/, tests in javatest/, sample tools in tools/ -->
     <sourceDirectory>src</sourceDirectory>
     <plugins>
-      <!-- Add tests/ and tools/ as test code -->
+      <!-- Add javatest/ and tools/ as test code -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
@@ -28,7 +28,7 @@
             <id>add-tests</id>
             <phase>generate-test-sources</phase>
             <goals><goal>add-test-source</goal></goals>
-            <configuration><sources><source>tests</source><source>tools</source></sources></configuration>
+            <configuration><sources><source>javatest</source><source>tools</source></sources></configuration>
           </execution>
         </executions>
       </plugin>

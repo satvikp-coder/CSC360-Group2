@@ -33,12 +33,42 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-// Main window: open one image, press Analyze, see a SHORT assessment.
-// Click a tile on the image to see that tile's histogram and a short summary.
-// Full tables are only in the "Advanced details" window.
-// Slow work (loading, analysing) runs in SwingWorker threads so the window stays responsive.
+/**
+ * Main window of the program. It is the last step of the flow
+ * {@link Histogram} to {@link Comparison} to {@link Regions} to {@link Noise}
+ * and {@link Edges} to {@link CopyMove} and {@link FlatPatch} to
+ * {@link LocalAnomaly} to {@link TamperingAssessment}. This class only shows
+ * the results.
+ *
+ * <p>How it works:</p>
+ * <ul>
+ * <li><b>Loading:</b> "Open image..." lets the user choose a PNG or JPEG file.
+ * {@link LoadedImage#load(File)} reads it in a {@link SwingWorker} background job.</li>
+ * <li><b>Analyzing:</b> "Analyze" runs {@link Analysis#run(java.awt.image.BufferedImage, String)}
+ * in another background job, so the window stays responsive. The result is a
+ * SHORT final assessment: the outcome, the measured anomalous area and up to three reasons.</li>
+ * <li><b>Job number:</b> every new job gets a new number ({@link #jobNumber}).
+ * When a job finishes, its number is compared with the current one. An old
+ * number means a newer job started, so the old result is ignored. This way a
+ * slow result from an old image is never shown for a new image.</li>
+ * <li><b>Histogram selection:</b> clicking a tile on the image selects it.
+ * The histogram panel then shows that tile's histogram, and a short summary
+ * of the selected region is shown (position, size, three measurements and one
+ * sentence). The assessment does not change. "Whole-image histogram" goes back.</li>
+ * <li><b>Views:</b> a drop-down list chooses what is drawn on the image
+ * (flagged regions, heatmaps, edge map or copy-move candidates).</li>
+ * <li><b>Advanced details:</b> a separate read-only window with the full text:
+ * rules, tables for every tile and copy-move counts.</li>
+ * </ul>
+ *
+ * <p>The numbers are measurements, not a verdict. The anomalous-area
+ * percentage is a measured area, not a probability of editing. Unusual values
+ * do not prove editing, and normal values do not prove that an image is
+ * authentic. This program is for learning. It is not forensic proof.</p>
+ */
 public class App implements ActionListener, ChangeListener {
 
+    /** Reminder text: the numbers are measurements, not a verdict. */
     static final String NOTE = "These are measurements, not a verdict. "
             + "Unusual values do NOT prove an image was edited, and normal values do NOT prove it is authentic.";
 
@@ -76,10 +106,14 @@ public class App implements ActionListener, ChangeListener {
     Analysis analysis;     // results for the current image, null if not analysed
     boolean busy = false;  // true while loading or analysing
 
-    // Every new job gets a new number. A finished job whose number is old is ignored,
-    // so a slow result from an old image can never be shown for a new one.
+    /**
+     * Number of the newest background job. Every new job gets a new number.
+     * A finished job whose number is old is ignored, so a slow result from
+     * an old image can never be shown for a new one.
+     */
     int jobNumber = 0;
 
+    /** Builds the window, connects the controls and shows the window. Call it on the Swing thread. */
     App() {
         chooser.setFileFilter(new FileNameExtensionFilter("PNG or JPEG", "png", "jpg", "jpeg"));
         openButton.addActionListener(this);
@@ -175,6 +209,11 @@ public class App implements ActionListener, ChangeListener {
         advancedButton.setToolTipText("Full tables, thresholds and copy-search counts");
     }
 
+    /**
+     * Handles the buttons, the view list and the overlay check box.
+     *
+     * @param e the event; its source tells which control was used
+     */
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == openButton) {
             openImage();
@@ -191,13 +230,23 @@ public class App implements ActionListener, ChangeListener {
         }
     }
 
-    // Opacity slider moved.
+    /**
+     * Handles the opacity slider: passes its value to the image panel.
+     *
+     * @param e the slider event
+     */
     public void stateChanged(ChangeEvent e) {
         imagePanel.setOpacity(opacity.getValue());
     }
 
-    // Mouse click on the image: select the tile under the mouse.
+    /** Mouse click on the image: selects the tile under the mouse. */
     class ClickHandler extends MouseAdapter {
+        /**
+         * Selects the tile under the mouse. It does nothing before the analysis is done
+         * or when the click is outside the image.
+         *
+         * @param e the mouse event
+         */
         public void mouseClicked(MouseEvent e) {
             if (analysis == null) {
                 return;
@@ -209,7 +258,13 @@ public class App implements ActionListener, ChangeListener {
         }
     }
 
-    // Only the histogram and the small region summary change. The assessment stays as it is.
+    /**
+     * Selects one tile. Only the histogram and the small region summary change.
+     * The assessment stays as it is. An analysis must exist.
+     *
+     * @param row tile row, from 0
+     * @param col tile column, from 0
+     */
     void selectTile(int row, int col) {
         Regions r = analysis.regions;
         imagePanel.setSelected(r.bounds(row, col));
@@ -220,7 +275,7 @@ public class App implements ActionListener, ChangeListener {
         wholeButton.setEnabled(true);
     }
 
-    // Back to the whole-image histogram.
+    /** Removes the tile selection and shows the whole-image histogram again. */
     void showWholeImage() {
         imagePanel.setSelected(null);
         wholeButton.setEnabled(false);
@@ -232,7 +287,17 @@ public class App implements ActionListener, ChangeListener {
         regionSummary.setText("Click a tile on the image to inspect it.");
     }
 
-    // Short summary of one tile: about three measurements and one sentence.
+    /**
+     * Short summary of one tile: its position and size, whether the local rule
+     * flagged it, three measurements (histogram difference, noise variation,
+     * edge strength) and one sentence of interpretation.
+     * The sentence describes measurements only. It does not say the tile was edited.
+     *
+     * @param a   the finished analysis
+     * @param row tile row, from 0
+     * @param col tile column, from 0
+     * @return the summary text
+     */
     static String regionText(Analysis a, int row, int col) {
         Regions r = a.regions;
         Rectangle b = r.bounds(row, col);
@@ -257,14 +322,21 @@ public class App implements ActionListener, ChangeListener {
                 b.x, b.y, b.width, b.height, flagText, r.variation[row][col], a.noise[row][col], a.edges[row][col], meaning);
     }
 
+    /** Lets the user choose a file and loads it. If the user cancels, the current image stays. */
     void openImage() {
         if (chooser.showOpenDialog(frame) != JFileChooser.APPROVE_OPTION) {
-            return; // cancelled: keep the current image
+            return; // The user cancelled.
         }
         loadImage(chooser.getSelectedFile());
     }
 
-    // Shared by the chooser and the desktop integration test; no file work runs on the EDT.
+    /**
+     * Starts a background job that loads a file. It gets a new job number.
+     * No file work runs on the Swing thread. It is shared by the file chooser
+     * and the desktop integration test.
+     *
+     * @param file the PNG or JPEG file to load
+     */
     void loadImage(File file) {
         jobNumber++;
         busy = true;
@@ -274,6 +346,10 @@ public class App implements ActionListener, ChangeListener {
         new LoadWorker(file, jobNumber).execute();
     }
 
+    /**
+     * Starts a background job that analyzes the current image. It gets a new
+     * job number. It does nothing if no image is loaded or a job is running.
+     */
     void analyze() {
         if (current == null || busy) return;
         clearResults();
@@ -284,11 +360,12 @@ public class App implements ActionListener, ChangeListener {
         new AnalyzeWorker(current, jobNumber).execute();
     }
 
+    /** Enables the Analyze button only when an image is loaded and no job is running. */
     void updateButtons() {
         analyzeButton.setEnabled(current != null && !busy);
     }
 
-    // Clear everything that belonged to the previous image.
+    /** Clears everything that belonged to the previous image and shows the new image without overlays. */
     void clearResults() {
         analysis = null;
         showAssessment(null);
@@ -310,11 +387,23 @@ public class App implements ActionListener, ChangeListener {
         regionSummary.setText(NOTE);
     }
 
+    /**
+     * One line describing a loaded image.
+     *
+     * @param loaded the loaded image
+     * @return the file name, the size and the format
+     */
     String describe(LoadedImage loaded) {
         return loaded.file.getName() + "  " + loaded.image.getWidth() + " x " + loaded.image.getHeight()
                 + "  " + loaded.format;
     }
 
+    /**
+     * Shows a finished analysis: the assessment, the whole-image histogram
+     * and the summary view (flagged regions).
+     *
+     * @param a the finished analysis of the current image
+     */
     void showResults(Analysis a) {
         analysis = a;
         showAssessment(a.assessment);
@@ -324,12 +413,12 @@ public class App implements ActionListener, ChangeListener {
         view.setEnabled(true);
         advancedButton.setEnabled(true);
         wholeButton.setEnabled(false);
-        view.setSelectedIndex(0); // the summary view shows exactly the flagged regions
+        view.setSelectedIndex(0); // View 0 is the summary of flagged regions.
         showView();
         regionSummary.setText("Click a tile on the image to inspect it.");
     }
 
-    // Put the chosen measurement on the image.
+    /** Draws the view chosen in the list ({@link #VIEWS}) on the image. It does nothing before the analysis is done. */
     void showView() {
         if (analysis == null) {
             return;
@@ -363,13 +452,18 @@ public class App implements ActionListener, ChangeListener {
         } else if (choice == 5) {
             imagePanel.setPairs(analysis.copyMove.matches);
         }
-        // Ordinary measurement maps also outline the tiles the rule flagged, so the two can be told apart.
+        // The three heatmaps also mark the flagged tiles, so they can be compared.
         if ((choice == 1 || choice == 2 || choice == 3) && t != null && t.local != null && t.local.available) {
             imagePanel.setFlags(t.local.flagged, size);
         }
     }
 
-    // Short statistics line: only numbers that were really calculated.
+    /**
+     * Short statistics line with numbers that were really calculated.
+     *
+     * @param a the finished analysis
+     * @return mean gray value, standard deviation, entropy and the highest regional difference
+     */
     static String statsText(Analysis a) {
         double highest = 0;
         for (double[] row : a.regions.variation) {
@@ -381,6 +475,12 @@ public class App implements ActionListener, ChangeListener {
                 a.mean, a.standardDeviation, a.entropy, highest);
     }
 
+    /**
+     * Shows the final assessment (outcome, measured area, reasons and statistics).
+     * The background colour follows the outcome.
+     *
+     * @param assessment the assessment, or {@code null} to show "Not analyzed"
+     */
     void showAssessment(TamperingAssessment assessment) {
         Color background = new Color(236, 238, 240);
         assessmentStatus.setText(assessment == null ? "Not analyzed" : assessment.title());
@@ -402,7 +502,11 @@ public class App implements ActionListener, ChangeListener {
         assessmentReasons.setCaretPosition(0);
     }
 
-    // Everything in full: assessment, rules, tables, copy-move counts. Read-only text in its own window.
+    /**
+     * Opens the Advanced details window: everything in full (assessment,
+     * rules, tables, copy-move counts) as read-only text. An older details
+     * window is closed first.
+     */
     void showAdvanced() {
         if (analysis == null) {
             return;
@@ -424,6 +528,12 @@ public class App implements ActionListener, ChangeListener {
         advancedDialog.setVisible(true);
     }
 
+    /**
+     * Builds the text of the Advanced details window.
+     *
+     * @param a the finished analysis
+     * @return the assessment details, whole-image numbers, the tile tables and the copy-move counts
+     */
     String advancedText(Analysis a) {
         Regions r = a.regions;
         return (a.assessment == null ? "" : a.assessment.details() + "\n")
@@ -445,6 +555,13 @@ public class App implements ActionListener, ChangeListener {
                 + "\n" + NOTE;
     }
 
+    /**
+     * Text about the copy-move search: counts, a warning if a limit was reached,
+     * and the first 10 candidate pairs.
+     *
+     * @param c the copy-move result
+     * @return the text
+     */
     static String copyMoveText(CopyMove c) {
         String text = "Copy-move candidates (exact 16 x 16 blocks, same shift at least "
                 + CopyMove.MIN_GROUP + " times)\n"
@@ -467,7 +584,13 @@ public class App implements ActionListener, ChangeListener {
         return text;
     }
 
-    // Numbers of a grid, one line per row.
+    /**
+     * Writes the numbers of a grid, one line per row.
+     *
+     * @param values the grid as {@code [row][col]}
+     * @param format a {@link String#format} pattern for one number
+     * @return the text
+     */
     static String grid(double[][] values, String format) {
         StringBuilder text = new StringBuilder();
         for (int row = 0; row < values.length; row++) {
@@ -479,28 +602,48 @@ public class App implements ActionListener, ChangeListener {
         return text.toString();
     }
 
+    /**
+     * Shows an error dialog.
+     *
+     * @param message the text to show
+     */
     void showError(String message) {
         JOptionPane.showMessageDialog(frame, message, "Problem", JOptionPane.ERROR_MESSAGE);
     }
 
-    // Loads a file in the background.
+    /** Background job that loads a file. It carries the job number it was started with. */
     class LoadWorker extends SwingWorker<LoadedImage, Void> {
         File file;
         int myJob;
 
+        /**
+         * Creates the job.
+         *
+         * @param file  the file to load
+         * @param myJob the job number of this job
+         */
         LoadWorker(File file, int myJob) {
             this.file = file;
             this.myJob = myJob;
         }
 
+        /**
+         * Loads the file on a background thread.
+         *
+         * @return the loaded image
+         * @throws Exception if the file cannot be loaded (see {@link LoadedImage#load(File)})
+         */
         protected LoadedImage doInBackground() throws Exception {
             return LoadedImage.load(file);
         }
 
-        // Runs on the Swing thread when loading is finished.
+        /**
+         * Runs on the Swing thread when loading is finished.
+         * The result is ignored if this job is not the newest one.
+         */
         protected void done() {
             if (myJob != jobNumber) {
-                return; // a newer job started, ignore this one
+                return; // A newer job started, so ignore this one.
             }
             busy = false;
             try {
@@ -522,23 +665,38 @@ public class App implements ActionListener, ChangeListener {
         }
     }
 
-    // Runs all measurements in the background.
+    /** Background job that runs all measurements. It carries the job number it was started with. */
     class AnalyzeWorker extends SwingWorker<Analysis, Void> {
         LoadedImage loaded;
         int myJob;
 
+        /**
+         * Creates the job.
+         *
+         * @param loaded the image to analyze
+         * @param myJob  the job number of this job
+         */
         AnalyzeWorker(LoadedImage loaded, int myJob) {
             this.loaded = loaded;
             this.myJob = myJob;
         }
 
+        /**
+         * Runs the analysis on a background thread.
+         *
+         * @return the finished analysis
+         */
         protected Analysis doInBackground() {
             return Analysis.run(loaded.image, loaded.format);
         }
 
+        /**
+         * Runs on the Swing thread when the analysis is finished.
+         * The result is ignored if this job is not the newest one.
+         */
         protected void done() {
             if (myJob != jobNumber) {
-                return; // image was replaced meanwhile, ignore this result
+                return; // The image was replaced meanwhile, so ignore this result.
             }
             busy = false;
             try {
@@ -552,7 +710,12 @@ public class App implements ActionListener, ChangeListener {
         }
     }
 
-    // The useful message inside an exception from a worker.
+    /**
+     * Finds the useful message inside an exception from a worker.
+     *
+     * @param e the exception
+     * @return the message of the cause if there is one, otherwise the message of {@code e}
+     */
     static String errorText(Exception e) {
         Throwable cause = e;
         if (e.getCause() != null) {
@@ -561,6 +724,11 @@ public class App implements ActionListener, ChangeListener {
         return cause.getMessage();
     }
 
+    /**
+     * Starts the program: creates the window on the Swing thread.
+     *
+     * @param args not used
+     */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
