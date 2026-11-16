@@ -40,4 +40,4 @@ Only what the code actually uses. The code avoids lambdas, streams, records and 
 | Concept | Where |
 |---|---|
 | Maven `pom.xml`, `mvn test`, `mvn package` | build and tests |
-| Tests as `main` methods that throw `AssertionError` | `tests/imageproof` |
+| Tests as `main` methods that throw `AssertionError` | `javatest/imageproof` |

@@ -38,7 +38,7 @@ in EVALUATION.md. It does not turn generic histogram/noise/edge extrema into vot
 
 ## Test plan and results
 
-Automated: `mvn test` (see `tests/imageproof`). Measured sample results: [EVALUATION.md](EVALUATION.md). GUI steps: [MANUAL_TEST.md](MANUAL_TEST.md). Demo script: [DEMO.md](DEMO.md).
+Automated: `mvn test` (see `javatest/imageproof`). Measured sample results: [EVALUATION.md](EVALUATION.md). GUI steps: [MANUAL_TEST.md](MANUAL_TEST.md). Demo script: [DEMO.md](DEMO.md).
 
 ## Remaining
 
