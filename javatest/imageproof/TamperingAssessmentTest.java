@@ -122,6 +122,25 @@ public class TamperingAssessmentTest {
         int[][] multiple = CopyMoveTest.noise(128, 128, 809);
         CopyMoveTest.copy(multiple, 8, 8, 64, 8, 24); CopyMoveTest.copy(multiple, 8, 8, 64, 64, 24);
         check(image(multiple).assessment.outcome == TamperingAssessment.Outcome.INCONCLUSIVE, "multiple actual displacements are ambiguous");
+
+        // Wording: "nothing found" is only said after a completed search; a search that did not run says so.
+        String foundNothing = "No identical copied patch was found in the completed search";
+        TamperingAssessment completed = sample("original.png").assessment;
+        check(completed.outcome == TamperingAssessment.Outcome.NO_CLEAR_INDICATORS && completed.reasons.get(2).contains(foundNothing)
+                && completed.reasons.get(2).contains("does not prove the image is original"), "completed search: nothing-found wording");
+        Analysis thin = image(CopyMoveTest.noise(700, 20, 5150)); // 11 tiles, but too short for the copy search
+        check(thin.assessment.local.available && thin.assessment.outcome == TamperingAssessment.Outcome.NO_CLEAR_INDICATORS, "thin image: local rule ran");
+        check(thin.assessment.reasons.get(2).contains("The copy search was not run") && !thin.assessment.details().contains(foundNothing)
+                && thin.assessment.reasons.get(2).contains("does not prove the image is original"), "skipped search is not reported as 'nothing found'");
+        Analysis cut = sample("original.png"); cut.copyMove.truncated = true;
+        TamperingAssessment cutResult = TamperingAssessment.evaluate(cut);
+        check(cutResult.outcome == TamperingAssessment.Outcome.INCONCLUSIVE && !cutResult.details().contains(foundNothing)
+                && cutResult.details().contains("Copy search:"), "truncated search: limitation wording, no nothing-found claim");
+        Analysis ambiguous = image(multiple);
+        check(!ambiguous.assessment.details().contains(foundNothing), "ambiguous search: no nothing-found claim");
+        Analysis flatSample = sample("inserted.png");
+        check(flatSample.assessment.decisionEvidence.contains("Flat-patch rule: " + flatSample.assessment.flatRegions.size() + " solid patch"),
+                "evidence and result use the same single flat-patch analysis");
         for (int high : new int[]{3, 4}) {
             int[][] texture = new int[24][56];
             for (int y = 0; y < 24; y++) for (int x = 0; x < 56; x++) texture[y][x] = (x + y) % 2 * high;

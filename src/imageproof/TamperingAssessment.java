@@ -169,12 +169,11 @@ public final class TamperingAssessment {
         String measurements = context(a);
         LocalAnomaly local = LocalAnomaly.analyze(a);
         CopyResult copy = judgeCopy(a);
-        FlatPatch flatEvidence = FlatPatch.analyze(a.gray, a.jpeg);
-        String evidence = localEvidence(a, local) + "\n" + flatText(flatEvidence) + "\n" + copy.evidence;
+        FlatPatch flat = FlatPatch.analyze(a.gray, a.jpeg); // run once, used for the evidence and the decision
+        String evidence = localEvidence(a, local) + "\n" + flatText(flat) + "\n" + copy.evidence;
         long total = (long) a.width * a.height;
         boolean localFlags = local.available && local.flaggedTiles > 0;
         boolean copySupported = copy.kind == Kind.SUPPORTED;
-        FlatPatch flat = FlatPatch.analyze(a.gray, a.jpeg);
         boolean flatFlags = flat.available && flat.pixels > 0;
         if (copySupported) measurements += footprintContext(a, copy.from, "First footprint")
                 + footprintContext(a, copy.to, "Second footprint");
@@ -205,7 +204,9 @@ public final class TamperingAssessment {
             outcome = Outcome.NO_CLEAR_INDICATORS;
             reasons.add("No group of neighboring regions stood out in both brightness distribution and noise.");
             reasons.add("Strong edges and textures were treated as normal variation.");
-            reasons.add("No identical copied patch was found. This does not prove the image is original.");
+            // Only a completed search can say "nothing found". Otherwise say why it was not run.
+            if (copy.kind == Kind.NONE) reasons.add("No identical copied patch was found in the completed search. This does not prove the image is original.");
+            else reasons.add("The copy search was not run: " + copy.reason + " This does not prove the image is original.");
         }
         return new TamperingAssessment(outcome, reasons, evidence, measurements,
                 copySupported ? copy.from : null, copySupported ? copy.to : null, local, flatFlags ? flat : null, flaggedPixels, total);
