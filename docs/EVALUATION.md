@@ -1,7 +1,7 @@
 # Evaluation
 
-Measured output of the real analysis on synthetic samples. A limited exact-patch
-heuristic is evaluated below; no calibrated probability or accuracy figure is claimed.
+Measured output of the real analysis on synthetic samples. A local anomaly rule plus an
+exact-copy check are evaluated below; no calibrated probability or accuracy figure is claimed.
 
 ## Samples
 
@@ -68,84 +68,134 @@ Full table: [RESULTS.csv](RESULTS.csv). Tiles are written `r<row> c<col>` (64 px
 - **Input rules**: `grayscale.png` gives exactly the original's numbers (gray samples read directly, issue #22). The transparent half counts as white, not the hidden black (issue #23), so its mean is high.
 - **Bad files** are rejected with a message and do not produce results.
 
-Global brightness and regional TVD/noise/edge values remain descriptive context,
-not independent votes for editing. The final assessment uses the specific
-exact-duplication relationship below.
+The final assessment combines the local anomaly rule and the copy-move
+detector (below). Brightness and the regional maxima in the table above remain
+descriptive context; they are not votes for editing.
 
 ## Final assessment rule
 
-This is a cautious heuristic for **possible duplication**, not a general tampering
-classifier, verified source/destination chronology or probability model.
+Everything is calculated from the ONE uploaded image. No reference image,
+database, machine learning or weighted score is used. The result is a measured
+area and a cautious status, never a probability of editing.
 
-Apply these rules in order:
+### Local anomaly rule (`LocalAnomaly`)
 
-1. Missing, inconsistent or nonfinite measurements -> **INCONCLUSIVE**. Check
-   normalized global/tile histograms, finite bounded maps/statistics, dimensions,
-   gray values and candidate-search metadata. Numeric validation tolerance is
-   1e-9, the existing histogram convention; it is not a detection threshold.
-2. A truncated search/output -> **INCONCLUSIVE**, regardless of match count.
-3. Insufficient geometry or constant intensity -> **INCONCLUSIVE**. Two source
-   positions on each axis need a 24×24 footprint (16 px block + 8 px step).
-   CopyMove's minimum separated shift is 32 px on at least one axis. Thus a
-   qualifying pair needs width >=56 and height >=24, or the transposed dimensions.
-4. No retained candidates after a completed configured search -> **NO CLEAR
-   TAMPERING INDICATORS**, explicitly limited to these tests. This is not a clean
-   image verdict: the known inserted and shuffled manipulations receive it too.
-5. A possible warning requires **all retained pairs** to have one displacement,
-   unique source/destination positions, exact pixel equality, texture variance
-   >=25 and the existing grid/separation rules. There must be at least the
-   existing MIN_GROUP=3 pairs. Source positions must form one side-connected
-   component with 8 px steps, span both axes, and have a bounding footprint
-   disjoint from its translated partner. Otherwise -> **INCONCLUSIVE**.
-6. If those specific conditions hold -> **POSSIBLE TAMPERING DETECTED**. This says
-   an exact duplication relationship was observed; natural repeated objects can
-   give identical evidence. Bounding footprints may contain unmatched gaps.
+Using values the program already computes for each 64 x 64 tile (partial edge
+tiles at the right and bottom are smaller):
 
-No new weights, brightness/noise thresholds, anomaly index or confidence score
-are introduced. MIN_GROUP and texture filtering are inherited CopyMove settings,
-not validated forensic cutoffs. Regional maxima and values overlapping the
-candidate footprints are displayed with their tile coordinates as **context**;
-correlated texture/edge/noise values are not counted as additional proof.
+1. **Histogram.** The tile's neighbour TVD is a high outlier compared with the
+   other tiles of the same image: modified z-score `0.6745 * (v - median) / MAD`
+   >= 3.5 (Iglewicz and Hoaglin; if MAD is 0 the mean absolute deviation is
+   used), and the TVD is at least 0.10 so tiny absolute differences never count.
+2. **Noise.** Its residual variance differs by a factor of at least 2 (larger or
+   smaller) from the median of its up to 8 neighbouring tiles, using
+   `(variance + 1)` ratios. At least 3 neighbours are needed and the larger of
+   the two variances must be at least 4 (std of about 2 gray levels).
+3. **Edges explain, they do not vote.** If the tile's own mean Sobel strength is
+   a high outlier (modified z >= 3.5) the difference is attributed to an object
+   boundary or texture and the tile is not flagged. Many strong edges never
+   raise the assessment.
+4. **Spatial agreement.** A tile meeting 1-3 is flagged only if at least one of
+   its 8 neighbours also meets 1-3. Isolated tiles are ignored. Histogram, noise
+   and edge values come from the same pixels, so they are one piece of
+   co-located evidence, not three independent proofs.
+
+The rule is unavailable (status Inconclusive, area N/A) for images with fewer
+than 9 tiles, and for images whose tiles are almost identical (no local contrast).
+
+### Anomalous area percentage
+
+```text
+anomalousAreaPercentage = 100 * flaggedPixelArea / totalAnalyzedPixelArea
+```
+
+`flaggedPixelArea` is the number of pixels covered by flagged tiles (using each
+tile's real width x height) plus the 16 x 16 blocks of a supported copy-move
+patch pair, with every pixel counted once even where they overlap. The result
+is clamped to 0..100. **It is the share of the image that met the rule. It is not
+a probability of forgery or editing and not a percentage of forged pixels.**
+It shows `N/A` when the local rule is unavailable and there is no supported
+copy patch, or when the measurements are invalid.
+
+### Copy-move input (`TamperingAssessment`)
+
+The earlier exact-copy rule is kept as one specialised input. Supported when all
+retained pairs share one displacement, positions are unique, pixels are exactly
+equal, texture variance >= 25, there are at least 3 pairs forming one
+side-connected source patch, and the footprint is disjoint from its partner.
+Search limits, several shifts, weak or ambiguous matches are *not conclusive*
+(not tampering evidence, but they stop a "no notable indicators" answer).
+
+### Status
+
+| Status | When |
+| --- | --- |
+| Possible tampering indicators | flagged local tiles, or a supported copy-move patch pair |
+| Inconclusive | invalid measurements; local rule unavailable (too few tiles / homogeneous); or nothing flagged but the copy search was truncated or ambiguous (repeated pattern, large image only partly searched) |
+| No notable indicators | local rule available and nothing flagged, copy search completed without a supported patch. Not a statement that the image is original |
+
+### Threshold justification and validation (honest summary)
+
+* 3.5 is the standard cut-off for modified z-scores. 2x noise ratio, the 0.10
+  TVD floor, the noise floor of 4 and 3 neighbours were chosen **before**
+  measuring, as simple round values; they are not tuned to the samples.
+* They are validated only against small synthetic sets: 9 benign images produce
+  **0 flagged tiles** (original, grayscale, transparent samples, plus 6
+  controls with strong boundaries, text, shadows, a vignette, a textured blob
+  next to flat sky and plain noise, see `tools/imageproof/Controls.java`).
+* **Design history:** a first version compared noise only with neighbours of
+  similar edge strength; it flagged nothing on the manipulated control because
+  noise and Sobel strength move together. The edge-similarity filter was then
+  removed, and edges were kept only as the "boundary explanation" in rule 3.
+  The `patch-less-noise` control was written before that change but the change
+  was made after seeing it, so it is **not** an independent test of the final
+  rule.
+* There is no calibration data, so **no probability of editing is available**.
+  The numbers say where the rule fires, not how likely an edit is.
 
 ## Actual assessment results
 
-Reproduced with Temurin Java 17; full measurements and the first decision reason
-are appended to [RESULTS.csv](RESULTS.csv).
+Reproduce with `Evaluate` (see below). Full columns: [RESULTS.csv](RESULTS.csv).
 
-| Case | Pairs / cap | Assessment | Interpretation |
-|---|---|---|---|
-| Original | 0 / no | No clear indicators | No authenticity claim |
-| Copied PNG | 25 / no | Possible tampering | Connected 48×48 footprints, (16,16) -> (168,112), shift (152,96) |
-| Copied JPEG | 15 / no | Possible tampering | 40×40 footprints (24,24) -> (176,120), shift (152,96); not evidence of JPEG robustness in general |
-| Repeated pattern | 200 / yes | Inconclusive | Raw count is insufficient; incomplete/ambiguous pattern evidence |
-| Inserted object | 0 / no | No clear indicators | **Missed manipulation**; generic edge/noise peaks do not rescue the exact-copy rule |
-| Brightness / blur | 0 / no | No clear indicators | No automatic malicious-edit label from generic statistics |
-| Shuffled pixels | 0 / no | No clear indicators | **Missed manipulation** despite changed spatial diagnostics |
-| Grayscale / transparency | 0 / no | No clear indicators | Input policy retained; no authenticity claim |
-| Tiny / constant image | 0 / no | Inconclusive | Insufficient qualifying geometry/texture |
-| Corrupt / unsupported | load rejected | No assessment | The GUI retains only a valid result for the unchanged current image |
+| Case | Flagged tiles | Anomalous area | Status | Reading |
+|---|---|---|---|---|
+| original.png | 0 | 0.0% | No notable indicators | Correct (no edit) |
+| copied.png | 0 | 9.4% | Possible tampering | **Detected** by copy-move (25 pairs, shift (152,96)); local rule does not fire |
+| copied.jpg | 0 | 6.3% | Possible tampering | **Detected** by copy-move (15 pairs) |
+| inserted.png | 0 | 0.0% | No notable indicators | **Missed manipulation** |
+| brightness.png | 0 | 0.0% | No notable indicators | Global change; **missed** (not local) |
+| blurred.png | 0 | 0.0% | No notable indicators | Global change; **missed** (not local) |
+| shuffled.png | 0 | 0.0% | No notable indicators | **Missed manipulation** |
+| repeated.png | 0 | N/A | Inconclusive | Benign repeated pattern: tiles identical (no local contrast) and copy search hit its limit. Not called tampering |
+| grayscale.png, transparent.png | 0 | 0.0% | No notable indicators | Correct (no edit) |
+| corrupt.png, unsupported.txt | - | - | load rejected | No assessment is fabricated |
+| 6 benign controls (strong edges, text, shadow, texture, vignette) | 0 | 0.0% | No notable indicators | No false positives |
+| control: patch with less noise | 2 | 4.2% | Possible tampering | **Detected** (2 of 12 flagged tiles touch the patch) |
+| control: brighter patch (+40) | 0 | 0.0% | No notable indicators | **Missed**; histogram shifts are not flagged without a noise change |
+| 4000 x 3000 noise image | 0 | 0.0% | Inconclusive | Copy search covered only the first 20000 blocks |
 
-Separately seeded sanity checks use seeds 2026111601–2026111603 in 128×128
-random-texture images: a 32×32 patch from (8,8) to (72,64) gives 9 pairs and a
-possible warning for each; the corresponding unmodified controls give no clear
-indicators. These examples were not used to choose the rule, but they are still
-synthetic checks, not a representative independent accuracy benchmark.
-
-An additional control (seed 2026111699) constructs the same formula-based motif
-twice without copying pixels. It also gives a possible warning: a **known false
-warning**. Two naturally identical motifs and a copied motif can be observationally
-indistinguishable. Periodic repeats, competing shifts, disconnected matches,
-overlapping footprints and search caps are conservatively inconclusive, but this
-cannot eliminate every false warning. Near-exact, off-grid, rotated, scaled and
-recompressed copies can be missed. No accuracy percentage is claimed.
+**False positives:** none of the 9 benign images above; a constructed pair of
+identical motifs (not copied) still gives a *copy-move* warning (seed
+2026111699). Natural repeated objects, shadows with noise changes or photos
+processed differently in parts can fire the local rule.
+**Missed manipulations:** the inserted object, shuffled pixels, global
+brightness and blur, and a brighter patch. The local rule mainly sees regions
+whose histogram **and** noise both differ from their surroundings.
+**Inconclusive / N/A:** the repeated pattern, the 12 MP image and images with
+fewer than 9 tiles (smaller than about 192 x 192).
+No accuracy percentage is claimed.
 
 ## Reproduce assessment tests
 
-`mvn -B clean test` runs the nine preserved test programs plus
-`TamperingAssessmentTest`. It covers every supplied category, independent
-synthetic checks, numeric validity, determinism, inherited texture/group and
-derived geometry boundaries, spatial ambiguity and explanations. Production
-assessment code never examines filenames.
+`mvn -B clean test` runs the test programs: the nine preserved ones,
+`TamperingAssessmentTest` (copy evidence, validity, boundaries) and
+`LocalAnomalyTest` (benign controls, area formula, partial tiles, overlap,
+unavailable cases, short texts). Production code never examines filenames.
+Regenerate the CSV with:
+
+```bash
+java -Djava.awt.headless=true -cp target/classes:target/test-classes imageproof.Evaluate samples > docs/RESULTS.csv
+```
 
 For the separate real-App worker/state test on a graphical desktop:
 
@@ -154,6 +204,5 @@ java -cp 'target/classes;target/test-classes' imageproof.AssessmentGuiTest
 ```
 
 It forces out-of-order load/analysis completion with latches and tests replacement,
-invalid load, repeated Analyze, failure and EDT responsiveness. It substitutes
-error capture for modal dialogs; actual visual inspection is recorded separately
-in MANUAL_TEST.md. On Unix use `:` in the classpath.
+invalid load, repeated Analyze, failure, the short result and tile summaries and
+EDT responsiveness. On Unix use `:` in the classpath.

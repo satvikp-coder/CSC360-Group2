@@ -45,7 +45,7 @@ public class AssessmentGuiTest {
                 check(app.jobNumber == job && !app.analyzeButton.isEnabled(), "duplicate Analyze ignored while busy");
             });
             waitFor(() -> !app.busy && app.analysis != null);
-            SwingUtilities.invokeAndWait(() -> check(app.assessmentStatus.getText().equals("No clear tampering indicators"), "original limited assessment visible"));
+            SwingUtilities.invokeAndWait(() -> check(app.assessmentStatus.getText().equals("No notable indicators"), "original limited assessment visible"));
             SwingUtilities.invokeAndWait(() -> {
                 app.loadImage(copied.file);
                 check(app.assessmentStatus.getText().equals("Not analyzed"), "new selection immediately hides previous conclusion");
@@ -53,19 +53,29 @@ public class AssessmentGuiTest {
             waitFor(() -> !app.busy && app.current.file.equals(copied.file));
             SwingUtilities.invokeAndWait(() -> {
                 check(app.analysis == null && app.assessmentStatus.getText().equals("Not analyzed"), "replacement clears assessment");
-                check(!app.results.getText().contains("FINAL IMAGE ASSESSMENT"), "old explanation removed");
+                check(app.areaLabel.getText().trim().isEmpty() && !app.advancedButton.isEnabled(), "old area and advanced view removed");
                 app.analyze();
             });
             waitFor(() -> !app.busy && app.analysis != null);
             SwingUtilities.invokeAndWait(() -> {
-                check(app.assessmentStatus.getText().equals("Possible tampering detected"), "copy result visible");
-                check(app.view.getSelectedIndex() == 4, "specific candidate areas are shown");
+                check(app.assessmentStatus.getText().equals("Possible tampering indicators"), "copy result visible");
+                check(app.view.getSelectedIndex() == 0, "summary of flagged areas is shown first");
+                check(app.areaLabel.getText().startsWith("ANOMALOUS AREA: ") && app.areaLabel.getText().contains("%"), "area percentage visible");
+                check(app.assessmentReasons.getText().split("\n").length <= 9, "short reasons panel");
+                String before = app.assessmentStatus.getText() + app.assessmentReasons.getText() + app.areaLabel.getText();
+                app.selectTile(1, 2);
+                check(app.regionSummary.getText().startsWith("Position: (128, 64)") && app.regionSummary.getText().split("\n").length <= 12, "short tile summary");
+                check(before.equals(app.assessmentStatus.getText() + app.assessmentReasons.getText() + app.areaLabel.getText()), "tile selection leaves assessment unchanged");
+                app.selectTile(0, 0);
+                check(app.regionSummary.getText().startsWith("Position: (0, 0)"), "next tile replaces the summary");
+                app.showWholeImage();
+                check(!app.wholeButton.isEnabled() && app.regionSummary.getText().startsWith("Click a tile"), "return to whole-image histogram");
                 app.lastError = null; app.loadImage(new File(samples, "corrupt.png"));
             });
             waitFor(() -> !app.busy && app.lastError != null);
             SwingUtilities.invokeAndWait(() -> {
                 check(app.current.file.equals(copied.file), "invalid load preserves matching input");
-                check(app.analysis != null && app.assessmentStatus.getText().equals("Possible tampering detected"), "invalid load preserves only valid current assessment");
+                check(app.analysis != null && app.assessmentStatus.getText().equals("Possible tampering indicators"), "invalid load preserves only valid current assessment");
             });
 
             CountDownLatch oldAnalysisDone = new CountDownLatch(1), entered = new CountDownLatch(1);

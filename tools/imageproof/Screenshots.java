@@ -21,11 +21,12 @@ public class Screenshots {
             public void run() {
                 try {
                     App app = new App();
-                    shot(app, "copied.png", 0, -1, -1, "app-regions.png");
-                    shot(app, "copied.png", 0, 2, 1, "app-tile.png");
-                    shot(app, "copied.png", 3, -1, -1, "app-edges.png");
-                    shot(app, "copied.png", 4, -1, -1, "app-copy-move.png");
-                    shot(app, "repeated.png", 4, -1, -1, "app-repeated.png");
+                    shot(app, "copied.png", 0, -1, -1, "app-summary.png");
+                    shot(app, "copied.png", 1, -1, -1, "app-regions.png");
+                    shot(app, "copied.png", 1, 2, 1, "app-tile.png");
+                    shot(app, "copied.png", 4, -1, -1, "app-edges.png");
+                    shot(app, "copied.png", 5, -1, -1, "app-copy-move.png");
+                    shot(app, "repeated.png", 5, -1, -1, "app-repeated.png");
                     app.frame.dispose();
                 } catch (Exception e) {
                     throw new RuntimeException(e);

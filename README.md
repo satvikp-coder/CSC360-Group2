@@ -16,32 +16,35 @@ Open **one** PNG or JPEG image and press **Analyze**. The program measures:
 | Sobel edges | Edge strength `sqrt(gx² + gy²)` per pixel, mean per tile, and an edge map |
 | Copy-move candidates | Exact 16 x 16 textured blocks that appear twice, far apart, with the same shift |
 
-Results include a **FINAL IMAGE ASSESSMENT** box with plain-language reasons,
-a heatmap, a histogram and measurements. Click a tile to inspect it.
+The result is a short **FINAL IMAGE ASSESSMENT**: a status, the **anomalous
+area** as a percentage, at most three plain-language reasons and a note. Full
+tables are kept out of the main window; **Advanced details...** shows them.
 
-The assessment is a limited **exact-duplication heuristic**:
-- **Possible tampering detected:** complete, unique exact matches form a connected 2D patch with one shift and a separate partner footprint. Naturally repeated objects can still produce this result.
-- **No clear tampering indicators:** no retained exact-copy group was found in the completed configured search. This does **not** certify an image clean or authentic; inserted objects and shuffled pixels are known misses.
-- **Inconclusive:** search limits, ambiguous/weak matches, insufficient texture/size or invalid measurements prevent a supported result.
+How it is decided (all from the single image, no reference image or online
+database): a 64 x 64 tile is **flagged** when its histogram difference to its
+neighbours is a high outlier *and* its noise differs from its neighbours, it is
+not explained by a strong edge, and a neighbouring tile agrees. An exact
+copy-move patch pair is added as separate evidence. Exact rules and thresholds:
+[EVALUATION.md](docs/EVALUATION.md#final-assessment-rule).
 
-The box stays visible above the detailed numbers. Positive results open the
-existing copy-candidate view; green/magenta boxes show the actual matching blocks.
-The detailed evidence lists counts, shift, patch coordinates and search limits.
-Histogram/TVD/noise/edge maxima are labelled **descriptive context**, not independent
-votes. See the [exact rule and limitations](docs/EVALUATION.md#final-assessment-rule).
+- **Possible tampering indicators:** flagged tiles and/or a supported copy-move patch pair.
+- **No notable indicators:** the tests found nothing. This does **not** mean the image is original or authentic.
+- **Inconclusive:** not enough reliable information (tiny or uniform image, invalid data, repeated pattern, copy search only partly covering a big image).
 
-![Final assessment and matching patches on Windows, Java 17](docs/images/assessment-copy-windows.png)
+**Anomalous area = 100 x flagged pixel area / analyzed pixel area.** It says how
+much of the image met the rule. It is **not** a probability of forgery or editing;
+no such probability is calculated (there is no calibration data).
 
-See [recorded desktop checks and remaining manual checks](docs/MANUAL_TEST.md#recorded-feature-verification--2026-11-16).
+![Selected region and short assessment on Windows](docs/images/desktop-selected-region.png)
 
-![Regional variation with a selected tile](docs/images/app-tile.png)
+See [recorded desktop checks](docs/MANUAL_TEST.md#recorded-verification-local-anomaly-rule-and-concise-ui-2026-11-16).
 
 ![Copy-move candidates on the copied sample](docs/images/app-copy-move.png)
 
 **This is an educational tool, not a forensic verdict.** The heuristic describes
 specific evidence and its limits; it is not a calibrated probability or a
 definitive edited/unedited answer. Object boundaries, texture and repeated
-patterns can respond strongly. Missing matches do not establish authenticity.
+patterns can respond strongly. A clear result does not establish authenticity.
 
 ## Setup
 
@@ -73,9 +76,10 @@ java -jar target/simple-image-proof-0.1.0.jar
 
 1. **Open image...** and pick a PNG or JPEG (up to 16 megapixels).
 2. **Analyze**. Work runs in the background, the window stays responsive.
-3. Choose a view: Regional variation, Noise residual variance, Edge strength, Edge map, Copy-move candidates.
-4. Use **Show heatmap** and **Opacity** to see the image under the colours.
-5. Click a tile to see its pixel range, histogram, mean, deviation, entropy, variation, noise and edge values.
+3. Read the assessment. The first view highlights the flagged regions. Other views: Regional variation, Noise residual variance, Edge strength, Edge map, Copy-move candidates (flagged tiles stay outlined on the measurement maps).
+4. Use **Show overlay** and **Opacity** to see the image under the colours.
+5. Click a tile to see its histogram and a short summary (position, size, histogram difference, noise, edge strength). **Whole-image histogram** goes back.
+6. **Advanced details...** opens the full tables, rule and copy-search counts.
 
 Cancelling the file chooser keeps the current image. A broken or unsupported file shows an error and keeps the current image. Opening a new image clears the old results.
 
@@ -92,7 +96,8 @@ Cancelling the file chooser keeps the current image. A broken or unsupported fil
 | `Regions` | tiles, tile histograms, neighbour variation |
 | `Noise`, `Edges`, `CopyMove` | the three diagnostics |
 | `Analysis` | runs everything for one image |
-| `TamperingAssessment` | cautious exact-duplication rule, reasons, candidate footprints and descriptive context |
+| `LocalAnomaly` | flags tiles whose histogram and noise stand out from neighbours (edges explain, not vote) |
+| `TamperingAssessment` | combines the local rule with the copy-move check; status, reasons, anomalous-area percentage |
 | `LoadedImage` | reads a PNG/JPEG with clear errors |
 | `App`, `ImagePanel`, `HistogramPanel` | the Swing window |
 
@@ -102,6 +107,7 @@ More: [Architecture](docs/ARCHITECTURE.md), [Manual test](docs/MANUAL_TEST.md), 
 
 - Histograms ignore pixel positions: `shuffled.png` has exactly the same global histogram as the original.
 - Normal edges and texture give high variation, noise and edge values.
+- The local rule sees regions whose histogram **and** noise both differ from their surroundings. It misses global changes (brightness, blur), shuffled pixels and flat inserted objects, and natural content can fire it. See the false positives and misses in [EVALUATION.md](docs/EVALUATION.md#actual-assessment-results).
 - Copy-move only finds exact copies moved by a multiple of 8 px, no rotation or scaling. Repeated patterns give false candidates. Big images are only partly searched (limit shown on screen).
 
 ## Team

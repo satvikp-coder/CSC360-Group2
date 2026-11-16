@@ -6,108 +6,212 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
-/** A limited exact-duplication heuristic, never a probability or authenticity verdict. */
+/**
+ * Final assessment of ONE image. It combines the local anomaly rule (LocalAnomaly: regional histogram,
+ * noise and edge measurements that agree in the same place) with the exact copy-move detector.
+ * The anomalous-area percentage is measured area, never a probability of editing.
+ */
 public final class TamperingAssessment {
     public enum Outcome { POSSIBLE_TAMPERING, NO_CLEAR_INDICATORS, INCONCLUSIVE }
 
     public final Outcome outcome;
-    public final List<String> reasons;
-    public final String decisionEvidence;
+    public final List<String> reasons;       // at most three short sentences
+    public final String decisionEvidence;    // technical text for the Advanced details view
     public final String descriptiveMeasurements;
+    public final LocalAnomaly local;         // null if the measurements were invalid
+    public final boolean areaAvailable;
+    public final double areaPercent;         // 0..100, only meaningful if areaAvailable
+    public final long flaggedPixels;
+    public final long analyzedPixels;
     private final Rectangle source;
     private final Rectangle destination;
-    public static final String LIMITATIONS = "Heuristic, not proof. Natural repeated objects can match. "
+    public static final String NOTE = "These findings suggest areas worth inspecting. They do not confirm editing.";
+    public static final String LIMITATIONS = "Heuristic, not proof. Natural textures, shadows, edges and repeated objects can look unusual. "
             + "Insertions, shuffling, blur, rotated/off-grid or recompressed copies can be missed. "
-            + "No clear indicators does not mean original, unedited or authentic. No probability is calculated.";
+            + "No notable indicators does not mean original, unedited or authentic. No probability of editing is calculated.";
 
-    private TamperingAssessment(Outcome outcome, List<String> reasons, String evidence,
-            String measurements, Rectangle source, Rectangle destination) {
+    private TamperingAssessment(Outcome outcome, List<String> reasons, String evidence, String measurements,
+            Rectangle source, Rectangle destination, LocalAnomaly local, long flaggedPixels, long analyzedPixels) {
         this.outcome = outcome;
-        this.reasons = List.copyOf(reasons);
+        this.reasons = List.copyOf(reasons.size() > 3 ? reasons.subList(0, 3) : reasons);
         this.decisionEvidence = evidence;
         this.descriptiveMeasurements = measurements;
         this.source = source == null ? null : new Rectangle(source);
         this.destination = destination == null ? null : new Rectangle(destination);
+        this.local = local;
+        this.analyzedPixels = analyzedPixels;
+        boolean ok = local != null && analyzedPixels > 0 && flaggedPixels >= 0 && flaggedPixels <= analyzedPixels
+                && (local.available || source != null);
+        this.areaAvailable = ok;
+        this.flaggedPixels = ok ? flaggedPixels : 0;
+        this.areaPercent = ok ? Math.max(0, Math.min(100, 100.0 * flaggedPixels / analyzedPixels)) : 0;
     }
 
     public String title() {
-        if (outcome == Outcome.POSSIBLE_TAMPERING) return "Possible tampering detected";
-        if (outcome == Outcome.NO_CLEAR_INDICATORS) return "No clear tampering indicators";
+        if (outcome == Outcome.POSSIBLE_TAMPERING) return "Possible tampering indicators";
+        if (outcome == Outcome.NO_CLEAR_INDICATORS) return "No notable indicators";
         return "Inconclusive";
+    }
+
+    /** "12.5% of analyzed image area" or "N/A (...)". */
+    public String areaText() {
+        if (!areaAvailable) return "N/A (not enough reliable information to measure an area)";
+        return String.format(Locale.ROOT, "%.1f%% of analyzed image area", areaPercent);
     }
 
     public Rectangle sourceBounds() { return source == null ? null : new Rectangle(source); }
     public Rectangle destinationBounds() { return destination == null ? null : new Rectangle(destination); }
 
-    public String details() {
-        StringBuilder text = new StringBuilder("FINAL IMAGE ASSESSMENT\n" + title() + "\n\nWHY THIS RESULT?\n");
+    /** The short default result: about ten lines, no tables. */
+    public String summary() {
+        StringBuilder text = new StringBuilder("FINAL IMAGE ASSESSMENT\n" + title() + "\n\nANOMALOUS AREA\n" + areaText() + "\n\nWHY?\n");
         for (String reason : reasons) text.append("- ").append(reason).append('\n');
-        return text + "\nDECISION EVIDENCE\n" + decisionEvidence
+        return text + "\n" + NOTE;
+    }
+
+    /** Full technical text for the Advanced details view. */
+    public String details() {
+        return summary() + "\n\nDECISION EVIDENCE\n" + decisionEvidence
                 + "\n\nDESCRIPTIVE CONTEXT (not decision votes)\n" + descriptiveMeasurements
                 + "\n\nLIMITATIONS\n" + LIMITATIONS + "\n";
     }
 
     public static TamperingAssessment evaluate(Analysis a) {
         if (!valid(a)) return new TamperingAssessment(Outcome.INCONCLUSIVE,
-                List.of("Measurements are missing, inconsistent or nonfinite; no decision can be supported."),
-                "No valid evidence used.", "Unavailable; do not interpret missing values as zero.", null, null);
+                List.of("Measurements are missing or invalid, so no decision can be supported."),
+                "No valid evidence used.", "Unavailable; do not interpret missing values as zero.", null, null, null, 0, 0);
         String measurements = context(a);
+        LocalAnomaly local = LocalAnomaly.analyze(a);
+        CopyResult copy = judgeCopy(a);
+        String evidence = localEvidence(a, local) + "\n" + copy.evidence;
+        long total = (long) a.width * a.height;
+        boolean localFlags = local.available && local.flaggedTiles > 0;
+        boolean copySupported = copy.kind == Kind.SUPPORTED;
+        if (copySupported) measurements += footprintContext(a, copy.from, "First footprint")
+                + footprintContext(a, copy.to, "Second footprint");
+
+        long flaggedPixels = flaggedArea(a, local, copySupported ? copy.pairs : null);
+        List<String> reasons = new ArrayList<String>();
+        Outcome outcome;
+        if (localFlags || copySupported) {
+            outcome = Outcome.POSSIBLE_TAMPERING;
+            if (localFlags) {
+                reasons.add("Some neighboring regions have unusually different brightness distributions.");
+                reasons.add("The noise level in the same regions differs from their surroundings.");
+            }
+            if (copySupported) reasons.add("Two separate patches contain identical pixels, which can happen after copy-and-paste.");
+            else if (copy.kind == Kind.INCOMPLETE || copy.kind == Kind.AMBIGUOUS) reasons.add("Copy search was not conclusive: " + copy.reason);
+            if (reasons.size() < 3) reasons.add("These regions are highlighted on the image.");
+        } else if (!local.available) {
+            outcome = Outcome.INCONCLUSIVE;
+            reasons.add(local.unavailableReason);
+            reasons.add(copy.kind == Kind.NONE ? "The exact-copy search found nothing, but it only covers identical copied blocks."
+                    : "Copy search: " + copy.reason);
+        } else if (copy.kind == Kind.INCOMPLETE || copy.kind == Kind.AMBIGUOUS) {
+            outcome = Outcome.INCONCLUSIVE;
+            reasons.add("No group of neighboring regions stood out, but the copy search was not conclusive.");
+            reasons.add("Copy search: " + copy.reason);
+        } else {
+            outcome = Outcome.NO_CLEAR_INDICATORS;
+            reasons.add("No group of neighboring regions stood out in both brightness distribution and noise.");
+            reasons.add("Strong edges and textures were treated as normal variation.");
+            reasons.add("No identical copied patch was found. This does not prove the image is original.");
+        }
+        return new TamperingAssessment(outcome, reasons, evidence, measurements,
+                copySupported ? copy.from : null, copySupported ? copy.to : null, local, flaggedPixels, total);
+    }
+
+    // Pixels covered by flagged tiles and/or supported copy blocks, each pixel counted once.
+    private static long flaggedArea(Analysis a, LocalAnomaly local, List<CopyMove.Match> pairs) {
+        if (pairs == null) return local.available ? local.flaggedPixels : 0;
+        boolean[][] covered = new boolean[a.height][a.width];
+        if (local.available) {
+            for (int r = 0; r < a.regions.rows; r++) for (int c = 0; c < a.regions.cols; c++)
+                if (local.flagged[r][c]) paint(covered, a.regions.bounds(r, c));
+        }
+        for (CopyMove.Match m : pairs) {
+            paint(covered, new Rectangle(m.x1, m.y1, CopyMove.BLOCK, CopyMove.BLOCK));
+            paint(covered, new Rectangle(m.x2, m.y2, CopyMove.BLOCK, CopyMove.BLOCK));
+        }
+        long count = 0;
+        for (boolean[] row : covered) for (boolean value : row) if (value) count++;
+        return count;
+    }
+
+    private static void paint(boolean[][] covered, Rectangle r) {
+        for (int y = r.y; y < r.y + r.height && y < covered.length; y++)
+            for (int x = r.x; x < r.x + r.width && x < covered[0].length; x++) covered[y][x] = true;
+    }
+
+    private static String localEvidence(Analysis a, LocalAnomaly l) {
+        if (!l.available) return "Local rule: unavailable. " + l.unavailableReason;
+        return "Local rule (tile " + a.regions.tileSize + " px): histogram-unusual " + count(l.histogramUnusual)
+                + ", noise-unusual " + count(l.noiseUnusual) + ", boundary-explained " + count(l.boundaryExplained)
+                + ", candidates " + l.candidateTiles + ", flagged (with a flagged neighbour) " + l.flaggedTiles
+                + String.format(Locale.ROOT, "%nRule: TVD modified z >= %.1f and >= %.2f; noise ratio >= %.1f vs neighbour median (floor %.0f); "
+                + "not a high edge outlier; needs a neighbouring candidate.", LocalAnomaly.Z_LIMIT, LocalAnomaly.MIN_TVD,
+                LocalAnomaly.NOISE_RATIO, LocalAnomaly.NOISE_FLOOR);
+    }
+
+    private static int count(boolean[][] grid) {
+        int n = 0;
+        for (boolean[] row : grid) for (boolean value : row) if (value) n++;
+        return n;
+    }
+
+    private enum Kind { SUPPORTED, NONE, UNAVAILABLE, INCOMPLETE, AMBIGUOUS }
+
+    private static final class CopyResult {
+        final Kind kind; final String reason; String evidence; Rectangle from, to; List<CopyMove.Match> pairs;
+        CopyResult(Kind kind, String reason, String evidence) { this.kind = kind; this.reason = reason; this.evidence = evidence; }
+    }
+
+    // The earlier exact-copy rule, now only one specialised input of the final assessment.
+    private static CopyResult judgeCopy(Analysis a) {
         String evidence = "Retained candidate pairs: " + a.copyMove.matches.size()
                 + "; blocks checked: " + a.copyMove.blocksChecked + "; comparisons: " + a.copyMove.comparisons
                 + "\nConfigured search completed without reaching a cap: " + (a.copyMove.truncated ? "NO" : "YES")
                 + " (exact grayscale 16 px blocks on the 8 px grid only).";
-        if (a.copyMove.truncated) return inconclusive("Search/output limits were reached; candidates are incomplete. "
-                + "Many matches can come from a repeated pattern.", evidence, measurements);
-
-        // Two-dimensional patches need two block positions on each axis; separation is inherited from CopyMove.
+        if (a.copyMove.truncated) {
+            boolean manyMatches = a.copyMove.matches.size() >= CopyMove.MAX_MATCHES || a.copyMove.comparisons >= CopyMove.MAX_COMPARISONS;
+            return new CopyResult(Kind.INCOMPLETE, manyMatches
+                    ? "many identical blocks were found (a repeated pattern is likely) and the search hit its limit."
+                    : "the image is large, so the copy search covered only part of it.", evidence);
+        }
         int patch = CopyMove.BLOCK + CopyMove.STEP;
         int span = patch + 2 * CopyMove.BLOCK;
         if (a.width < patch || a.height < patch || (a.width < span && a.height < span))
-            return inconclusive("The image is too small to hold two separated two-dimensional patches under this rule.", evidence, measurements);
-        if (a.standardDeviation == 0)
-            return inconclusive("The image has no intensity texture; the exact textured-block method cannot assess duplication here.", evidence, measurements);
-        if (a.copyMove.matches.isEmpty()) return new TamperingAssessment(Outcome.NO_CLEAR_INDICATORS,
-                List.of("No retained exact-copy group was found in the completed configured search.",
-                        "This is a limited search result, not a clean-image verdict. Insertions and shuffled pixels can be missed.",
-                        "Histogram, noise and edge values describe content; they do not independently establish editing."),
-                evidence, measurements, null, null);
-
+            return new CopyResult(Kind.UNAVAILABLE, "the image is too small for the copy search.", evidence);
+        if (a.standardDeviation == 0) return new CopyResult(Kind.UNAVAILABLE, "the image has no texture for the copy search.", evidence);
+        if (a.copyMove.matches.isEmpty()) return new CopyResult(Kind.NONE, "no identical blocks found.", evidence);
         List<CopyMove.Match> pairs = a.copyMove.matches;
         if (pairs.size() < CopyMove.MIN_GROUP)
-            return inconclusive("Too few retained pairs support a coherent duplication relationship.", evidence, measurements);
+            return new CopyResult(Kind.AMBIGUOUS, "too few identical pairs to show a copied patch.", evidence);
         HashSet<Long> sources = new HashSet<Long>(), destinations = new HashSet<Long>();
         Rectangle from = null, to = null;
         int dx = 0, dy = 0;
         for (int i = 0; i < pairs.size(); i++) {
             CopyMove.Match m = pairs.get(i);
-            if (!validPair(a, m)) return inconclusive("Candidate coordinates, texture or exact pixel equality could not be verified.", evidence, measurements);
+            if (!validPair(a, m)) return new CopyResult(Kind.AMBIGUOUS, "candidate blocks could not be verified.", evidence);
             int shiftX = m.x2 - m.x1, shiftY = m.y2 - m.y1;
             if (i == 0) { dx = shiftX; dy = shiftY; }
             if (shiftX != dx || shiftY != dy)
-                return inconclusive("Candidates have multiple displacements; repeated content or several explanations remain possible.", evidence, measurements);
+                return new CopyResult(Kind.AMBIGUOUS, "identical blocks have several different shifts (repeated content is likely).", evidence);
             if (!sources.add(key(m.x1, m.y1)) || !destinations.add(key(m.x2, m.y2)))
-                return inconclusive("A block has more than one matching partner; the duplication relationship is ambiguous.", evidence, measurements);
+                return new CopyResult(Kind.AMBIGUOUS, "a block has more than one identical partner.", evidence);
             Rectangle first = new Rectangle(m.x1, m.y1, CopyMove.BLOCK, CopyMove.BLOCK);
             Rectangle second = new Rectangle(m.x2, m.y2, CopyMove.BLOCK, CopyMove.BLOCK);
             from = from == null ? first : from.union(first);
             to = to == null ? second : to.union(second);
         }
         if (from.intersects(to) || from.width < patch || from.height < patch || !connected(pairs))
-            return inconclusive("Matches do not form one connected two-dimensional source patch and a separate destination patch.", evidence, measurements);
+            return new CopyResult(Kind.AMBIGUOUS, "identical blocks do not form one source patch and one separate copy.", evidence);
         evidence += "\nOne displacement: (" + dx + ", " + dy + "); " + pairs.size() + " unique textured pairs."
                 + "\nSource " + bounds(from) + " -> destination " + bounds(to)
                 + "\nFootprints may include gaps. These are equal patches, not verified source/copy chronology.";
-        measurements += footprintContext(a, from, "First footprint") + footprintContext(a, to, "Second footprint");
-        return new TamperingAssessment(Outcome.POSSIBLE_TAMPERING,
-                List.of("Exact grayscale matches form one connected textured patch with a unique partner and consistent shift.",
-                        "The two patch footprints are separate; the configured search reached no cap.",
-                        "This supports possible duplication. Naturally repeated objects can produce the same evidence."),
-                evidence, measurements, from, to);
-    }
-
-    private static TamperingAssessment inconclusive(String reason, String evidence, String measurements) {
-        return new TamperingAssessment(Outcome.INCONCLUSIVE, List.of(reason,
-                "Generic brightness, variation, noise and edge values cannot resolve this uncertainty."), evidence, measurements, null, null);
+        CopyResult result = new CopyResult(Kind.SUPPORTED, "", evidence);
+        result.from = from; result.to = to; result.pairs = pairs;
+        return result;
     }
 
     private static long key(int x, int y) { return ((long) y << 32) | (x & 0xffffffffL); }

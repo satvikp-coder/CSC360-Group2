@@ -21,6 +21,8 @@ public class ImagePanel extends JPanel {
     private boolean showHeat = true;
     private Rectangle selected;   // selected tile in image pixels, null = none
     private ArrayList<CopyMove.Match> pairs; // copy-move candidates, null = none
+    private boolean[][] flags;    // tiles flagged by the local anomaly rule, null = none
+    private int flagTileSize;
 
     public ImagePanel() {
         setBackground(Color.LIGHT_GRAY);
@@ -54,6 +56,13 @@ public class ImagePanel extends JPanel {
     // Copy-move candidates to outline. null removes them.
     public void setPairs(ArrayList<CopyMove.Match> pairs) {
         this.pairs = pairs;
+        repaint();
+    }
+
+    // Tiles flagged by the anomaly rule: filled red (by the opacity) and outlined. null removes them.
+    public void setFlags(boolean[][] flags, int tileSize) {
+        this.flags = flags;
+        this.flagTileSize = tileSize;
         repaint();
     }
 
@@ -125,6 +134,9 @@ public class ImagePanel extends JPanel {
             drawHeat(g);
             drawLegend(g);
         }
+        if (flags != null && showHeat) {
+            drawFlags(g);
+        }
         if (pairs != null) {
             drawPairs(g);
         }
@@ -155,6 +167,22 @@ public class ImagePanel extends JPanel {
                 Rectangle r = toPanel(new Rectangle(col * tileSize, row * tileSize, w, h));
                 g.setColor(heatColor(value));
                 g.fillRect(r.x, r.y, r.width, r.height);
+            }
+        }
+    }
+
+    private void drawFlags(Graphics g) {
+        for (int row = 0; row < flags.length; row++) {
+            for (int col = 0; col < flags[row].length; col++) {
+                if (flags[row][col]) {
+                    int w = Math.min(flagTileSize, image.getWidth() - col * flagTileSize);
+                    int h = Math.min(flagTileSize, image.getHeight() - row * flagTileSize);
+                    Rectangle r = toPanel(new Rectangle(col * flagTileSize, row * flagTileSize, w, h));
+                    g.setColor(new Color(220, 0, 0, opacity * 255 / 100));
+                    g.fillRect(r.x, r.y, r.width, r.height);
+                    g.setColor(new Color(160, 0, 0));
+                    g.drawRect(r.x, r.y, r.width - 1, r.height - 1);
+                }
             }
         }
     }

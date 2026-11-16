@@ -12,8 +12,9 @@ File --LoadedImage.load--> BufferedImage --Analysis.run--> Analysis
                                                     +--> Noise      (3x3 residual variance per tile)
                                                     +--> Edges      (Sobel strength per tile + edge map)
                                                     +--> CopyMove   (exact block pairs grouped by shift)
-                                                    +--> TamperingAssessment (rule after all measurements finish)
-Analysis --> App shows it in ImagePanel (heatmap / boxes) and HistogramPanel + text
+                                                    +--> TamperingAssessment (LocalAnomaly rule + copy-move, then area %)
+Analysis --> App shows a short assessment, ImagePanel (flags / heatmap / boxes), HistogramPanel,
+             a short selected-region text; tables only in the Advanced details window
 ```
 
 Diagrams: [pixel to histogram](images/pixel-to-histogram.svg), [TVD between two histograms](images/histogram-compare.svg) (16 bins shown; the app uses 256).
@@ -29,10 +30,11 @@ Diagrams: [pixel to histogram](images/pixel-to-histogram.svg), [TVD between two 
 | `Edges` | `gradientX`, `gradientY`, `strength`, `tileStrength`, `map`; borders clamped |
 | `CopyMove` | Block search with limits, `matches`, `truncated` |
 | `Analysis` | Runs all of the above, holds the results in public fields |
-| `TamperingAssessment` | Validates completed evidence; reports a limited assessment with reasons, copy footprints and separate descriptive measurements |
+| `LocalAnomaly` | Per-tile flags: histogram outlier (modified z-score) + noise ratio vs neighbours, boundary explanation from edges, neighbour agreement |
+| `TamperingAssessment` | Validates evidence, runs `LocalAnomaly`, judges the copy-move patch, counts flagged pixels once (union) and builds the status, at most three reasons and the area percentage |
 | `LoadedImage` | Real format check (PNG/JPEG only), header size check, readable errors |
-| `App` | Window, buttons, view selector, `SwingWorker`s with a job number so stale results are ignored |
-| `ImagePanel` | Letterboxed image, heatmap, legend, copy-move boxes, selected tile, screen <-> image mapping |
+| `App` | Window, short assessment, selected-region text, Advanced details window, `SwingWorker`s with a job number so stale results are ignored |
+| `ImagePanel` | Letterboxed image, heatmap, flagged tiles, legend, copy-move boxes, selected tile, screen <-> image mapping |
 | `HistogramPanel` | Bar chart of 256 bins |
 
 ## Threads
@@ -40,18 +42,19 @@ Diagrams: [pixel to histogram](images/pixel-to-histogram.svg), [TVD between two 
 `App` starts on the Swing thread (`SwingUtilities.invokeLater`). Loading and analysing run in `SwingWorker`s. Each job gets `jobNumber++`; `done()` only shows a result if its number is still the newest, so an old result can never appear for a newer image.
 
 The assessment is calculated at the end of `Analysis.run`, on the same worker,
-not during Swing rendering. The right-hand assessment box sits outside the
-scrollable numeric tables. Successful image replacement and re-analysis clear
-the previous conclusion. Cancel returns before changing a job; failed loads
-retain the matching current result; failed analysis leaves no fabricated result.
-Repeated Analyze while busy is ignored. A positive assessment selects the
-existing candidate view; other views and tile selection remain available.
+not during Swing rendering. Successful image replacement and re-analysis clear
+the previous conclusion, area, histogram and Advanced window. Cancel returns
+before changing a job; failed loads retain the matching current result; failed
+analysis leaves no fabricated result. Repeated Analyze while busy is ignored.
+Selecting a tile changes only the histogram, the blue outline and the short
+region text; the assessment stays.
 
-The [rule](EVALUATION.md#final-assessment-rule) uses no weighted score. Generic
-map maxima and overlapping tile measurements are context, not independent
-evidence. Only qualifying exact-patch geometry supports a possible-duplication
-warning; no state establishes authenticity or a probability.
+The [rule](EVALUATION.md#final-assessment-rule) uses no weighted score. Edge
+strength only explains boundaries; histogram, noise and edge values come from
+the same pixels and are not independent proofs. The percentage is measured area
+(`100 * flagged pixels / analyzed pixels`), not a probability of editing; no
+state establishes authenticity.
 
 ## Tests and tools
 
-`tests/imageproof`: one test class per class above plus `SamplesTest`; `AllTests` runs them (`mvn test`). `tools/imageproof`: `SampleGenerator` (samples), `Evaluate` (results CSV), `Screenshots` (README images).
+`tests/imageproof`: one test class per class above plus `SamplesTest`; `AllTests` runs them (`mvn test`); `AssessmentGuiTest` is a separate desktop test. `tools/imageproof`: `SampleGenerator` (samples), `Controls` (extra deterministic benign/manipulated images), `Evaluate` (results CSV), `Screenshots` (README images).

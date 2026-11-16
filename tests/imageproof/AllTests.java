@@ -15,6 +15,7 @@ public class AllTests {
         ImagePanelTest.main(args);
         SamplesTest.main(args);
         TamperingAssessmentTest.main(args);
+        LocalAnomalyTest.main(args);
         System.out.println("All tests passed");
     }
 }

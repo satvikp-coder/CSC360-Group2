@@ -31,7 +31,9 @@ in EVALUATION.md. It does not turn generic histogram/noise/edge extrema into vot
 | Tile size | 64 px | Enough pixels per histogram, small enough to localise |
 | Copy-move | Exact 16 px blocks, step 8, limits | Simple and bounded; limits shown on screen |
 | Threshold | None | Not supported by evaluation; see `EVALUATION.md` |
-| Assessment | Cautious exact-duplication heuristic | Complete, unique, connected 2D matches; uncertain evidence is inconclusive, missing matches never certify authenticity |
+| Assessment | Local anomaly rule (histogram + noise + neighbour agreement, edges explain) plus exact-copy evidence | Uses the measurements that exist instead of relying on copied blocks; uncertain evidence is inconclusive, no match or flag ever certifies authenticity |
+| Percentage | Anomalous area = 100 x flagged pixels / analyzed pixels | A measured share of the image, not a probability; no calibration data exists, so no editing probability is shown |
+| Thresholds | Modified z 3.5, TVD floor 0.10, noise ratio 2, noise floor 4, 3 neighbours | Round values chosen before measuring; validated only on small synthetic sets (see `EVALUATION.md`) |
 
 ## Test plan and results
 

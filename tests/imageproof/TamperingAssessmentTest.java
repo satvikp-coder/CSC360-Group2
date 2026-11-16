@@ -47,7 +47,8 @@ public class TamperingAssessmentTest {
         for (String name : new String[]{"original.png", "inserted.png", "brightness.png", "blurred.png", "shuffled.png", "grayscale.png", "transparent.png"}) {
             Analysis a = sample(name);
             check(a.assessment.outcome == TamperingAssessment.Outcome.NO_CLEAR_INDICATORS, "limited no-indicator result: " + name);
-            check(a.assessment.details().contains("not a clean-image verdict"), "known misses never certify authenticity");
+            check(a.assessment.details().contains("does not prove the image is original"), "known misses never certify authenticity");
+            check(a.assessment.areaAvailable && a.assessment.areaPercent == 0, "measured area is 0 when nothing is flagged: " + name);
             check(a.assessment.sourceBounds() == null, "no fabricated flagged area");
             check(a.assessment.details().equals(TamperingAssessment.evaluate(a).details()), "deterministic explanation");
         }
@@ -58,6 +59,7 @@ public class TamperingAssessmentTest {
         check(copied.assessment.sourceBounds().equals(new Rectangle(16, 16, 48, 48)), "known source footprint");
         check(copied.assessment.destinationBounds().equals(new Rectangle(168, 112, 48, 48)), "known destination footprint");
         check(copied.assessment.decisionEvidence.contains("(152, 96)"), "actual displacement reported");
+        check(copied.assessment.areaAvailable && copied.assessment.areaPercent > 0 && copied.assessment.areaPercent < 100, "copy area measured");
         System.out.println("JPEG assessment: " + jpeg.assessment.outcome + "; " + jpeg.assessment.reasons.get(0));
         System.out.println("JPEG footprints: " + TamperingAssessment.bounds(jpeg.assessment.sourceBounds()) + " -> " + TamperingAssessment.bounds(jpeg.assessment.destinationBounds()));
         Analysis repeated = sample("repeated.png");
@@ -65,11 +67,12 @@ public class TamperingAssessmentTest {
         check(repeated.assessment.outcome == TamperingAssessment.Outcome.INCONCLUSIVE, "raw count cannot trigger a warning");
         check(repeated.assessment.decisionEvidence.contains("cap: NO"), "incomplete search disclosed");
         check(repeated.assessment.sourceBounds() == null, "ambiguous matches are not designated supported patches");
+        check(!repeated.assessment.areaAvailable && repeated.assessment.areaText().startsWith("N/A"), "no area is invented for identical tiles");
         repeated.copyMove.truncated = false;
         check(TamperingAssessment.evaluate(repeated).outcome == TamperingAssessment.Outcome.INCONCLUSIVE,
                 "repeated footprint remains ambiguous even without the cap flag");
         check(copied.assessment.descriptiveMeasurements.contains("not counted as independent evidence"), "correlation caveat");
-        check(copied.assessment.details().contains("No probability is calculated"), "no calibrated confidence claim");
+        check(copied.assessment.details().contains("No probability of editing is calculated"), "no calibrated confidence claim");
         check(sample("original.png").assessment.descriptiveMeasurements.contains("at tile r1 c3"), "actual variation maximum location");
         check(sample("original.png").assessment.descriptiveMeasurements.contains("at tile r1 c1"), "actual residual maximum location");
         Rectangle returned = copied.assessment.sourceBounds(); returned.x = 999;
@@ -80,7 +83,7 @@ public class TamperingAssessmentTest {
             Analysis separateCopy = copy(seed, 32);
             check(separateCopy.assessment.outcome == TamperingAssessment.Outcome.POSSIBLE_TAMPERING, "separate copied fixture " + seed);
             check(separateCopy.copyMove.matches.size() == 9, "separate copy has 9 pairs");
-            check(image(CopyMoveTest.noise(128, 128, seed)).assessment.outcome == TamperingAssessment.Outcome.NO_CLEAR_INDICATORS, "separate control " + seed);
+            check(image(CopyMoveTest.noise(128, 128, seed)).assessment.outcome == TamperingAssessment.Outcome.INCONCLUSIVE, "small control has too few tiles for local context " + seed);
         }
 
         int[][] lShape = {{8, 8}, {16, 8}, {8, 16}};
@@ -125,11 +128,17 @@ public class TamperingAssessmentTest {
         Analysis pairedMotifs = image(motifs);
         check(pairedMotifs.assessment.outcome == TamperingAssessment.Outcome.POSSIBLE_TAMPERING, "explicit paired-motif false-warning limitation");
         System.out.println("Separately seeded copies: 9 pairs each; paired-motif control: " + pairedMotifs.copyMove.matches.size() + " pairs, " + pairedMotifs.assessment.outcome);
-        Analysis contextOnly = sample("original.png");
-        for (int r = 0; r < contextOnly.regions.rows; r++) for (int c = 0; c < contextOnly.regions.cols; c++) {
-            contextOnly.regions.variation[r][c] = 1; contextOnly.noise[r][c] = 65025; contextOnly.edges[r][c] = Edges.MAX_STRENGTH;
-        }
-        check(TamperingAssessment.evaluate(contextOnly).outcome == TamperingAssessment.Outcome.NO_CLEAR_INDICATORS, "generic extrema are not classification votes");
+        // Local rule: extreme values in ONE tile are not enough; two adjacent agreeing tiles are; strong edges explain them away.
+        Analysis single = sample("original.png");
+        single.regions.variation[1][1] = 0.95; single.noise[1][1] = 4000;
+        check(TamperingAssessment.evaluate(single).outcome == TamperingAssessment.Outcome.NO_CLEAR_INDICATORS, "one isolated tile is not flagged");
+        Analysis pair = sample("original.png");
+        for (int c = 1; c <= 2; c++) { pair.regions.variation[1][c] = 0.95; pair.noise[1][c] = 4000; }
+        TamperingAssessment pairResult = TamperingAssessment.evaluate(pair);
+        check(pairResult.outcome == TamperingAssessment.Outcome.POSSIBLE_TAMPERING && pairResult.local.flaggedTiles == 2, "two adjacent agreeing tiles are flagged");
+        check(pairResult.flaggedPixels == 2 * 64 * 64 && Math.abs(pairResult.areaPercent - 100.0 * 2 * 64 * 64 / (256 * 192)) < 1e-9, "exact tile-area percentage");
+        for (int c = 1; c <= 2; c++) pair.edges[1][c] = Edges.MAX_STRENGTH;
+        check(TamperingAssessment.evaluate(pair).outcome == TamperingAssessment.Outcome.NO_CLEAR_INDICATORS, "strong boundary explains the difference");
         check(TamperingAssessment.evaluate(null).outcome == TamperingAssessment.Outcome.INCONCLUSIVE, "null evidence");
         check(TamperingAssessment.evaluate(new Analysis()).outcome == TamperingAssessment.Outcome.INCONCLUSIVE, "empty evidence");
         for (double value : new double[]{Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY}) {
