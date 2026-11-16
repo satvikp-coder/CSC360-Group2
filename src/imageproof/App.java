@@ -1,6 +1,7 @@
 package imageproof;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -12,6 +13,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import javax.swing.JButton;
+import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
@@ -55,6 +57,9 @@ public class App implements ActionListener, ChangeListener {
     ImagePanel imagePanel = new ImagePanel();
     HistogramPanel histogramPanel = new HistogramPanel("Gray histogram (whole image)");
     JTextArea results = new JTextArea();
+    JPanel assessmentPanel = new JPanel(new BorderLayout(4, 4));
+    JLabel assessmentStatus = new JLabel("Not analyzed");
+    JTextArea assessmentReasons = new JTextArea(10, 34);
     JFileChooser chooser = new JFileChooser();
 
     LoadedImage current;   // image shown now, null if none
@@ -84,7 +89,6 @@ public class App implements ActionListener, ChangeListener {
         top.add(showHeat);
         top.add(new JLabel("Opacity"));
         top.add(opacity);
-        top.add(status);
 
         results.setEditable(false);
         results.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
@@ -92,18 +96,33 @@ public class App implements ActionListener, ChangeListener {
         results.setWrapStyleWord(true);
         results.setText(NOTE);
 
-        JPanel right = new JPanel(new GridLayout(2, 1, 5, 5));
-        right.add(histogramPanel);
-        right.add(new JScrollPane(results));
-        right.setPreferredSize(new Dimension(420, 500));
+        JPanel measurements = new JPanel(new GridLayout(2, 1, 5, 5));
+        measurements.add(histogramPanel);
+        measurements.add(new JScrollPane(results));
+        assessmentPanel.setBorder(BorderFactory.createTitledBorder("FINAL IMAGE ASSESSMENT"));
+        assessmentStatus.setFont(assessmentStatus.getFont().deriveFont(Font.BOLD, 14f));
+        assessmentReasons.setEditable(false);
+        assessmentReasons.setLineWrap(true);
+        assessmentReasons.setWrapStyleWord(true);
+        assessmentReasons.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+        assessmentReasons.getAccessibleContext().setAccessibleName("Why this result and flagged regions");
+        assessmentPanel.add(assessmentStatus, BorderLayout.NORTH);
+        assessmentPanel.add(assessmentReasons, BorderLayout.CENTER);
+        assessmentPanel.add(new JLabel("<html>Limited heuristic, not proof or a probability.<br>Repeated objects can match; missing matches do not establish authenticity.</html>"), BorderLayout.SOUTH);
+        JPanel right = new JPanel(new BorderLayout(5, 5));
+        right.add(assessmentPanel, BorderLayout.NORTH);
+        right.add(measurements, BorderLayout.CENTER);
+        right.setPreferredSize(new Dimension(450, 600));
+        showAssessment(null);
 
         frame.setLayout(new BorderLayout(5, 5));
         frame.add(top, BorderLayout.NORTH);
         frame.add(imagePanel, BorderLayout.CENTER);
         frame.add(right, BorderLayout.EAST);
+        frame.add(status, BorderLayout.SOUTH);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setMinimumSize(new Dimension(700, 450));
-        frame.setSize(1000, 650);
+        frame.setMinimumSize(new Dimension(920, 700));
+        frame.setSize(1120, 800);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
@@ -163,14 +182,22 @@ public class App implements ActionListener, ChangeListener {
         if (chooser.showOpenDialog(frame) != JFileChooser.APPROVE_OPTION) {
             return; // cancelled: keep the current image
         }
+        loadImage(chooser.getSelectedFile());
+    }
+
+    // Shared by the chooser and the desktop integration test; no file work runs on the EDT.
+    void loadImage(File file) {
         jobNumber++;
         busy = true;
+        showAssessment(null);
         updateButtons();
-        status.setText("Loading " + chooser.getSelectedFile().getName() + "...");
-        new LoadWorker(chooser.getSelectedFile(), jobNumber).execute();
+        status.setText("Loading " + file.getName() + "...");
+        new LoadWorker(file, jobNumber).execute();
     }
 
     void analyze() {
+        if (current == null || busy) return;
+        clearResults();
         jobNumber++;
         busy = true;
         updateButtons();
@@ -185,6 +212,7 @@ public class App implements ActionListener, ChangeListener {
     // Clear everything that belonged to the previous image.
     void clearResults() {
         analysis = null;
+        showAssessment(null);
         view.setEnabled(false);
         imagePanel.setImage(current.image);
         imagePanel.setHeat(null, 0, "");
@@ -202,10 +230,13 @@ public class App implements ActionListener, ChangeListener {
 
     void showResults(Analysis a) {
         analysis = a;
+        showAssessment(a.assessment);
         histogramPanel.setTitle("Gray histogram (whole image)");
         histogramPanel.setValues(a.histogram);
         imagePanel.setSelected(null);
         view.setEnabled(true);
+        if (a.assessment != null && a.assessment.outcome == TamperingAssessment.Outcome.POSSIBLE_TAMPERING)
+            view.setSelectedIndex(4); // Existing boxes show the specific duplication evidence.
         showView();
         results.setText("Click a tile on the image to inspect it.\n\n" + resultText(a));
         results.setCaretPosition(0);
@@ -237,7 +268,8 @@ public class App implements ActionListener, ChangeListener {
 
     String resultText(Analysis a) {
         Regions r = a.regions;
-        String text = "Image: " + describe(current) + "\n\n"
+        String text = (a.assessment == null ? "" : a.assessment.details() + "\n")
+                + "Image: " + describe(current) + "\n\n"
                 + "Whole image\n"
                 + String.format("  Mean gray:          %.2f%n", a.mean)
                 + String.format("  Standard deviation: %.2f%n", a.standardDeviation)
@@ -254,6 +286,26 @@ public class App implements ActionListener, ChangeListener {
                 + "\n" + copyMoveText(a.copyMove)
                 + "\n" + NOTE;
         return text;
+    }
+
+    void showAssessment(TamperingAssessment assessment) {
+        Color background = new Color(236, 238, 240);
+        assessmentStatus.setText(assessment == null ? "Not analyzed" : assessment.title());
+        StringBuilder explanation = new StringBuilder("WHY THIS RESULT?\n");
+        if (assessment == null) explanation.append("Analyze the current image to calculate its assessment.");
+        else {
+            if (assessment.outcome == TamperingAssessment.Outcome.POSSIBLE_TAMPERING) background = new Color(255, 239, 207);
+            if (assessment.outcome == TamperingAssessment.Outcome.NO_CLEAR_INDICATORS) background = new Color(248, 248, 248);
+            for (String reason : assessment.reasons) explanation.append("• ").append(reason).append('\n');
+            explanation.append(assessment.decisionEvidence.split("\n")[0]).append('\n');
+            if (assessment.sourceBounds() != null) explanation.append("Flagged patches: ")
+                    .append(TamperingAssessment.bounds(assessment.sourceBounds())).append(" → ")
+                    .append(TamperingAssessment.bounds(assessment.destinationBounds()));
+        }
+        assessmentPanel.setBackground(background);
+        assessmentReasons.setBackground(background);
+        assessmentReasons.setText(explanation.toString());
+        assessmentReasons.setCaretPosition(0);
     }
 
     static String copyMoveText(CopyMove c) {
@@ -321,6 +373,7 @@ public class App implements ActionListener, ChangeListener {
             } catch (Exception e) {
                 // Bad file: keep the old image and its results.
                 showError(errorText(e));
+                showAssessment(analysis == null ? null : analysis.assessment);
                 if (current == null) {
                     status.setText("Open a PNG or JPEG image.");
                 } else {
