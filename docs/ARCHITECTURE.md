@@ -57,4 +57,4 @@ state establishes authenticity.
 
 ## Tests and tools
 
-`javatest/imageproof`: one test class per class above plus `SamplesTest`; `AllTests` runs them (`mvn test`); `AssessmentGuiTest` is a separate desktop test. `tools/imageproof`: `SampleGenerator` (samples), `Controls` (extra deterministic benign/manipulated images), `Evaluate` (results CSV), `Screenshots` (README images).
+`javatest/imageproof`: one test class per class above plus `SamplesTest`; `AllTests` runs them (`mvn test`); `AssessmentGuiTest` is a separate desktop test. `tools/imageproof`: `SampleGenerator` (samples), `DemoGifs` (README GIFs), `Controls` (extra deterministic benign/manipulated images), `Evaluate` (results CSV), `Screenshots` (README images).

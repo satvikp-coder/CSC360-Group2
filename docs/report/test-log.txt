@@ -22,7 +22,7 @@ All tests passed
 === mvn -B package -Dexec.skip=true ===
 [INFO] Building simple-image-proof 0.1.0
 [INFO] --- build-helper:3.6.0:add-test-source (add-tests) @ simple-image-proof ---
-[INFO] Building jar: C:\Users\satvi\Desktop\CSC360-end\CSC360-Group2\target\simple-image-proof-0.1.0.jar
+[INFO] Building jar: target\simple-image-proof-0.1.0.jar
 [INFO] BUILD SUCCESS
 
 === AssessmentGuiTest (real App on desktop) ===

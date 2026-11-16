@@ -1,118 +1,188 @@
 # Simple-Image-Proof
 
+### Single-Image Forensic Analysis Using Java
+
 **CSC360 End-Semester Project | Group 2 | Ahmedabad University**
 
-> **Assigned topic:** "Simple-Image-Proof: Simple check of Image Edits using a basic Histogram technique."
+A Java desktop application that examines **one image** using histograms and other
+basic image-processing techniques, and highlights regions that look unusual.
 
-## What it does
+![Upload an image, press Analyze and read the assessment](docs/gifs/upload-and-analyze.gif)
 
-Open **one** PNG or JPEG image and press **Analyze**. The program measures:
+*Real screen recording of the application: open a sample image, press Analyze, read the
+assessment, the anomalous area and the short reasons.*
 
-| Measurement | What it is |
+---
+
+## Introduction
+
+Digital images are easy to change. A region can be painted over, copied from one
+place to another, or pasted from a different picture. Editing leaves small traces in
+the pixels, such as unusual brightness distributions, missing camera noise or two
+areas that are exactly equal.
+
+Simple-Image-Proof shows how far **traditional image processing** can go in finding
+such traces: no machine learning, no cloud service, no reference photograph. It is
+an educational tool. It points at places a person should look at more closely. It
+does **not** prove that an image is real or fake.
+
+## Key features
+
+| Feature | In simple words |
 | --- | --- |
-| Global histogram | 256 bins of gray values, `gray = round(0.299 R + 0.587 G + 0.114 B)`, plus mean, standard deviation and entropy |
-| Regional variation | Image split into 64 x 64 tiles. Each tile's histogram is compared with its 4 neighbours using total variation distance `TVD = 0.5 * sum(abs(p[i] - q[i]))` |
-| Noise residual | Gray value minus the 3 x 3 local mean; variance per tile |
-| Sobel edges | Edge strength `sqrt(gx² + gy²)` per pixel, mean per tile, and an edge map |
-| Copy-move candidates | Exact 16 x 16 textured blocks that appear twice, far apart, with the same shift |
+| One-image upload | Open one PNG or JPEG file (up to 16 megapixels). |
+| Global histogram | Counts how many pixels have each gray value (0-255). |
+| Regional histograms | Splits the image into 64 x 64 tiles and compares every tile with its neighbours. |
+| Noise residual | Measures the fine, camera-like noise in each tile. |
+| Sobel edges | Finds strong outlines so ordinary boundaries are not mistaken for edits. |
+| Copy-move search | Finds two separate patches with exactly the same pixels (a clone stamp). |
+| Flat-patch search | Finds solid-colour areas, like a Paint fill, in an otherwise noisy image. |
+| Heatmap and overlays | Shows the measurements and the flagged regions on top of the image. |
+| Final assessment | One of: *Possible tampering indicators*, *No notable indicators*, *Inconclusive*. |
+| Anomalous-area percentage | How much of the image met the rules (a measured area, see below). |
+| Click-a-region summary | Click a tile to see its own histogram and a short summary. |
+| Advanced details | A separate window with the full tables, thresholds and search counts. |
 
-The result is a short **FINAL IMAGE ASSESSMENT**: a status, the **anomalous
-area** as a percentage, at most three plain-language reasons and a note. Full
-tables are kept out of the main window; **Advanced details...** shows them.
+## How it works
 
-How it is decided (all from the single image, no reference image or online
-database): a 64 x 64 tile is **flagged** when its histogram difference to its
-neighbours is a high outlier *and* its noise differs from its neighbours, it is
-not explained by a strong edge, and a neighbouring tile agrees. Two further
-indicators are separate evidence: an exact copy-move patch pair, and a
-solid-colour (flat) patch in an otherwise noisy PNG, like a Paint fill. Exact rules and thresholds:
-[EVALUATION.md](docs/EVALUATION.md#final-assessment-rule).
-
-- **Possible tampering indicators:** flagged tiles and/or a supported copy-move patch pair.
-- **No notable indicators:** the tests found nothing. This does **not** mean the image is original or authentic.
-- **Inconclusive:** not enough reliable information (tiny or uniform image, invalid data, repeated pattern, a copy-search limit).
-
-**Anomalous area = 100 x flagged pixel area / analyzed pixel area.** It says how
-much of the image met the rule. It is **not** a probability of forgery or editing;
-no such probability is calculated (there is no calibration data).
-
-**Full report with proof, screenshots and benchmark: [docs/REPORT.md](docs/REPORT.md).**
-
-![Painted balloon detected](docs/report/gui-2-lake-painted-balloon.png)
-
-See [recorded desktop checks](docs/MANUAL_TEST.md#recorded-verification-local-anomaly-rule-and-concise-ui-2026-11-16).
-
-![Copy-move candidates on the copied sample](docs/images/app-copy-move.png)
-
-**This is an educational tool, not a forensic verdict.** The heuristic describes
-specific evidence and its limits; it is not a calibrated probability or a
-definitive edited/unedited answer. Object boundaries, texture and repeated
-patterns can respond strongly. A clear result does not establish authenticity.
-
-## Setup
-
-Needs **JDK 17+** and **Maven**. No IDE and no extra libraries.
-
-```bash
-./launcher.sh
+```text
+Upload image
+   -> Convert to grayscale
+   -> Calculate image statistics (histogram, mean, contrast, entropy)
+   -> Analyze local regions (tiles, noise, edges, copy-move, flat patches)
+   -> Generate the flagged-region map
+   -> Show the assessment, the anomalous area and up to three reasons
 ```
 
-On Windows run `launcher.bat`. The launcher checks Java 17+ and Maven, rebuilds what changed, skips tests and starts the app.
+Everything is calculated from the single image you opened. The details and formulas
+are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and in the
+[Java API documentation](docs/JAVADOC.md).
+
+**Anomalous area = 100 x flagged pixel area / analyzed pixel area.** It says how much
+of the image met the rules. It is **not** the probability that the image was edited.
+
+## Demonstrations
+
+| Histogram and regions | Forensic views |
+| --- | --- |
+| ![Click a region to see its histogram](docs/gifs/histogram-and-regions.gif) | ![Heatmap, noise, edges, copy-move and opacity](docs/gifs/forensic-views.gif) |
+| The whole-image histogram, then one region's histogram and its short summary, then back. | Regional heatmap, noise, Sobel edge map and copy-move candidates, with the opacity slider. |
+
+All three GIFs are recordings of the real window (real mouse movement and clicks) on the
+synthetic sample `copied.png`. They are made with [`DemoGifs`](tools/imageproof/DemoGifs.java).
+
+## Real-life applications and importance
+
+The application is educational and investigative. It is useful for:
+
+1. **Digital photography education.** See how image statistics change when a photo is modified.
+2. **Media literacy.** Understand why unusual patterns in an image deserve a second look before it is trusted.
+3. **Preliminary visual inspection.** Highlight regions for a human to examine more closely.
+4. **Image-processing teaching and research.** A hands-on demo of histograms, spatial comparison, noise and edge detection.
+5. **Quality-assurance demonstrations.** Study how compression and ordinary transformations affect pixel statistics.
+6. **Digital forensics education.** Introduce basic passive-forensic ideas without claiming professional-grade evidence.
+
+**What it is not.** It is not accepted as legal evidence, it cannot verify that a photograph is
+authentic, and it cannot reliably find every manipulated image. A "no notable indicators"
+result does not mean the image is original. It does not detect AI-generated images.
+
+### Why this project is worthwhile
+
+* Digital images are easy to alter, so knowing how to inspect them matters.
+* Image analysis teaches useful maths: distributions, distances, gradients and local statistics.
+* Different edits leave different traces in the pixels.
+* A histogram alone loses *where* the pixels are, so local statistics add information.
+* Several measurements need careful interpretation: edges and texture can look unusual without any edit.
+* Understanding false warnings and missed detections is as important as finding something.
+
+## Technology
+
+Java 17, Java Swing, ImageIO, Maven and the standard Java libraries.
+No machine learning, no cloud analysis and no external image-analysis APIs.
+
+## Installation and running
+
+You need a **JDK 17 or newer** and **Maven**.
+
+```text
+Windows:      launcher.bat
+macOS/Linux:  ./launcher.sh
+```
+
+The launcher checks Java and Maven, builds what changed, skips the tests and starts the app.
 
 Manual commands:
 
 ```bash
-mvn test
-```
-
-```bash
-mvn package -Dexec.skip=true
-```
-
-```bash
+mvn -B clean test
+mvn -B package -Dexec.skip=true
 java -jar target/simple-image-proof-0.1.0.jar
 ```
 
-`mvn test` runs every test headless (no window needed) and fails the build on any error. It also works from another folder (`mvn -f path/to/pom.xml test`). GitHub Actions runs it on Java 17 (Ubuntu and Windows) for every push and pull request.
+## How to use
 
-## Usage
+1. Click **Open image...** and choose a PNG or JPEG (try `samples/copied.png`).
+2. Click **Analyze**. The work runs in the background, so the window stays responsive.
+3. Read the **final assessment**, the **anomalous area** and the short reasons.
+4. Use the view list to open the other views: regional variation, noise, edge strength, edge map and copy-move candidates. The **Opacity** slider fades the overlay.
+5. Click a tile on the image to see its histogram and a short summary. **Whole-image histogram** goes back.
+6. Click **Advanced details...** for the full numbers.
 
-1. **Open image...** and pick a PNG or JPEG (up to 16 megapixels).
-2. **Analyze**. Work runs in the background, the window stays responsive.
-3. Read the assessment. The first view highlights the flagged regions. Other views: Regional variation, Noise residual variance, Edge strength, Edge map, Copy-move candidates (flagged tiles stay outlined on the measurement maps).
-4. Use **Show overlay** and **Opacity** to see the image under the colours.
-5. Click a tile to see its histogram and a short summary (position, size, histogram difference, noise, edge strength). **Whole-image histogram** goes back.
-6. **Advanced details...** opens the full tables, rule and copy-search counts.
+Opening a new image clears the old results. A broken or unsupported file shows an error and keeps the current image.
 
-Cancelling the file chooser keeps the current image. A broken or unsupported file shows an error and keeps the current image. Opening a new image clears the old results.
+## Project structure
 
-## Samples and results
+```text
+CSC360-Group2/
+├── src/imageproof/        application code (analysis classes and the Swing window)
+├── javatest/imageproof/   Java tests (plain programs; AllTests runs them)
+├── tools/imageproof/      helpers: sample generator, benchmark, gallery, GIF recorder
+├── samples/               synthetic demonstration images made by the group
+├── docs/                  architecture, evaluation, report, manual test, Javadoc guide
+│   ├── images/            screenshots and diagrams
+│   ├── gifs/              the animated demos
+│   └── report/            evidence for the final report
+├── pom.xml                Maven build
+└── launcher.bat / .sh     one-step build and start
+```
 
-`samples/` holds 12 synthetic files made by [`SampleGenerator`](tools/imageproof/SampleGenerator.java) (no outside photos): original, copied object (PNG and JPEG), inserted object, brightness, blur, shuffled pixels, repeated pattern, grayscale, transparent, corrupt and a text file. Measured results: [docs/EVALUATION.md](docs/EVALUATION.md) and [docs/RESULTS.csv](docs/RESULTS.csv).
+## Testing
 
-## Code
+* `mvn -B clean test` runs the whole headless test suite (`javatest/imageproof/AllTests.java`). It also works from another folder: `mvn -f path/to/pom.xml test`.
+* The tests are plain Java programs that stop with an error if a check fails. No JUnit is needed.
+* `AssessmentGuiTest` tests the real window and needs a desktop, so it is run separately:
 
-| Class | Job |
-| --- | --- |
-| `Histogram` | gray values (gray images and transparency handled), counts, normalize, mean, std, entropy |
-| `Comparison` | total variation distance |
-| `Regions` | tiles, tile histograms, neighbour variation |
-| `Noise`, `Edges`, `CopyMove` | the three diagnostics |
-| `Analysis` | runs everything for one image |
-| `LocalAnomaly` | flags tiles whose histogram and noise stand out from neighbours (edges explain, not vote) |
-| `TamperingAssessment` | combines the local rule with the copy-move check; status, reasons, anomalous-area percentage |
-| `LoadedImage` | reads a PNG/JPEG with clear errors |
-| `App`, `ImagePanel`, `HistogramPanel` | the Swing window |
+```bash
+java -cp "target/classes:target/test-classes" -Dproject.dir=. imageproof.AssessmentGuiTest
+```
 
-More: [Architecture](docs/ARCHITECTURE.md), [Manual test](docs/MANUAL_TEST.md), [Demo and presentation guide](docs/DEMO.md), [Java concepts](docs/JAVA_CONCEPTS.md), [Project plan](docs/PROJECT_PLAN.md).
+On Windows use `;` instead of `:` in the class path.
 
-## Limitations
+* GitHub Actions runs the tests on Java 17 on Ubuntu and Windows for every push and pull request.
 
-- Histograms ignore pixel positions: `shuffled.png` has exactly the same global histogram as the original.
-- Normal edges and texture give high variation, noise and edge values.
-- The local rule sees regions whose histogram **and** noise both differ from their surroundings. It misses global changes (brightness, blur), shuffled pixels and flat inserted objects, and natural content can fire it. On a synthetic development/held-out benchmark it detected none of 80 local edits and 12 of 32 copy-moves, with no false warnings on 96 genuine images ([details](docs/EVALUATION.md#benchmark-with-development-and-held-out-scenes)).
-- Copy-move only finds exact copies moved by a multiple of 8 px, no rotation or scaling. Repeated patterns give false candidates. Big images are only partly searched (limit shown on screen).
+## Results and limitations
+
+The tool was evaluated on synthetic images ([docs/EVALUATION.md](docs/EVALUATION.md),
+[docs/REPORT.md](docs/REPORT.md)). In short:
+
+* Copied regions are found when they are exact and on the 8-pixel grid; solid paint fills are found in noisy PNG images.
+* Many manipulations are **missed**: smoothly brightened patches, pasted objects whose noise matches, rotated or re-compressed copies, global brightness or blur changes, and shuffled pixels.
+* Naturally repeated patterns can cause false copy warnings, and flat areas in screenshots or JPEG files can look suspicious.
+* "No notable indicators" is **not** proof of authenticity, and the anomalous-area percentage is measured area, **not** a probability of forgery.
+* The evaluation is synthetic, so it does not show real-world accuracy.
 
 ## Team
 
-**CSC360 — Group 2**: Satvik Patel, Varun, Garv, Shambhavee. **Topic assigned by:** Dhruvee Sheth.
+**CSC360 - Group 2**: Satvik Patel, Varun, Garv, Shambhavee.
+**Topic assigned by:** Dhruvee Sheth.
+
+## Documentation
+
+* [Java API documentation (Javadoc) guide](docs/JAVADOC.md)
+* [Architecture](docs/ARCHITECTURE.md)
+* [Evaluation and known limitations](docs/EVALUATION.md) and the [final report](docs/REPORT.md)
+* [Demo and presentation guide](docs/DEMO.md)
+* [Manual test guide](docs/MANUAL_TEST.md)
+* [Java concepts used](docs/JAVA_CONCEPTS.md)
+* [Project plan and decisions](docs/PROJECT_PLAN.md)
+* [How to contribute](CONTRIBUTING.md)

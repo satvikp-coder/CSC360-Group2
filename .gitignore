@@ -40,3 +40,10 @@ samples/private/
 Thumbs.db
 *.log
 target/
+
+# Generated documentation and temporary recordings
+target/site/
+*.mp4
+*.avi
+*.mkv
+recordings/
