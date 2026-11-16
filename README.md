@@ -23,8 +23,9 @@ tables are kept out of the main window; **Advanced details...** shows them.
 How it is decided (all from the single image, no reference image or online
 database): a 64 x 64 tile is **flagged** when its histogram difference to its
 neighbours is a high outlier *and* its noise differs from its neighbours, it is
-not explained by a strong edge, and a neighbouring tile agrees. An exact
-copy-move patch pair is added as separate evidence. Exact rules and thresholds:
+not explained by a strong edge, and a neighbouring tile agrees. Two further
+indicators are separate evidence: an exact copy-move patch pair, and a
+solid-colour (flat) patch in an otherwise noisy PNG, like a Paint fill. Exact rules and thresholds:
 [EVALUATION.md](docs/EVALUATION.md#final-assessment-rule).
 
 - **Possible tampering indicators:** flagged tiles and/or a supported copy-move patch pair.
@@ -35,7 +36,9 @@ copy-move patch pair is added as separate evidence. Exact rules and thresholds:
 much of the image met the rule. It is **not** a probability of forgery or editing;
 no such probability is calculated (there is no calibration data).
 
-![Selected region and short assessment on Windows](docs/images/desktop-selected-region.png)
+**Full report with proof, screenshots and benchmark: [docs/REPORT.md](docs/REPORT.md).**
+
+![Painted balloon detected](docs/report/gui-2-lake-painted-balloon.png)
 
 See [recorded desktop checks](docs/MANUAL_TEST.md#recorded-verification-local-anomaly-rule-and-concise-ui-2026-11-16).
 

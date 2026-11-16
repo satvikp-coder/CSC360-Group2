@@ -30,7 +30,7 @@ public class Benchmark {
     static final String GLOBAL = "global-edit";    // the whole image was changed (brightness, blur)
 
     static class Case {
-        String group, scene, family, change, truth;
+        String group, scene, family, change, truth, format = "PNG";
         int seed;
         BufferedImage image;
     }
@@ -151,6 +151,25 @@ public class Benchmark {
         return out;
     }
 
+    // Paint-style edits: solid colours drawn over the image.
+    static BufferedImage paint(BufferedImage src, String shape, int x, int y, int w, int h, int rgb) {
+        BufferedImage out = copyOf(src);
+        java.awt.Graphics2D g = out.createGraphics();
+        g.setColor(new java.awt.Color(rgb));
+        if (shape.equals("ellipse")) {
+            g.fillOval(x, y, w, h);
+        } else if (shape.equals("scribble")) {
+            g.setStroke(new java.awt.BasicStroke(8, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
+            for (int k = 0; k < 6; k++) {
+                g.drawLine(x + k * 24, y, x + k * 24 + 30, y + h);
+            }
+        } else {
+            g.fillRect(x, y, w, h);
+        }
+        g.dispose();
+        return out;
+    }
+
     static BufferedImage globalBrightness(BufferedImage src, int delta) {
         return brightnessPatch(src, 0, 0, src.getWidth(), src.getHeight(), delta);
     }
@@ -216,6 +235,9 @@ public class Benchmark {
         Case c = new Case();
         c.group = group; c.scene = scene; c.family = family; c.seed = seed;
         c.change = change; c.truth = truth; c.image = image;
+        if (change.startsWith("jpeg")) {
+            c.format = "JPEG";
+        }
         list.add(c);
     }
 
@@ -249,6 +271,9 @@ public class Benchmark {
             add(list, group, scene, family, seed, "insert-object", LOCAL, insertObject(base, seed, px + 50, py + 45, 48, 38));
             add(list, group, scene, family, seed, "brightness-patch+45", LOCAL, brightnessPatch(base, px, py, 112, 96, 45));
             add(list, group, scene, family, seed, "brightness-patch-45", LOCAL, brightnessPatch(base, px, py, 112, 96, -45));
+            add(list, group, scene, family, seed, "paint-fill-rect", LOCAL, paint(base, "rect", px, py, 96, 64, 0xC81E1E));
+            add(list, group, scene, family, seed, "paint-fill-ellipse", LOCAL, paint(base, "ellipse", px, py, 90, 70, 0x1E3CC8));
+            add(list, group, scene, family, seed, "paint-scribble", LOCAL, paint(base, "scribble", px, py, 70, 60, 0x101010));
             add(list, group, scene, family, seed, "copy-move-grid", COPY, copyMove(base, 16, 16, 64, 64, ((w - 96) / 8) * 8, ((h - 96) / 8) * 8));
             add(list, group, scene, family, seed, "copy-move-offgrid", COPY, copyMove(base, 21, 19, 64, 64, ((w - 96) / 8) * 8 + 3, ((h - 96) / 8) * 8 + 5));
             add(list, group, scene, family, seed, "global-brightness+40", GLOBAL, globalBrightness(base, 40));
@@ -277,7 +302,7 @@ public class Benchmark {
         java.util.HashMap<String, int[]> table = new java.util.HashMap<String, int[]>();
         for (Case c : cases) {
             long start = System.currentTimeMillis();
-            Analysis a = Analysis.run(c.image);
+            Analysis a = Analysis.run(c.image, c.format);
             long millis = System.currentTimeMillis() - start;
             TamperingAssessment t = a.assessment;
             String area = t.areaAvailable ? String.format(Locale.ROOT, "%.1f", t.areaPercent) : "N/A";

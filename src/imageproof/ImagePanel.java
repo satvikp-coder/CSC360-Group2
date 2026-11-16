@@ -23,6 +23,7 @@ public class ImagePanel extends JPanel {
     private ArrayList<CopyMove.Match> pairs; // copy-move candidates, null = none
     private boolean[][] flags;    // tiles flagged by the local anomaly rule, null = none
     private int flagTileSize;
+    private java.util.List<Rectangle> regions; // solid-colour patches in image pixels, null = none
 
     public ImagePanel() {
         setBackground(Color.LIGHT_GRAY);
@@ -63,6 +64,12 @@ public class ImagePanel extends JPanel {
     public void setFlags(boolean[][] flags, int tileSize) {
         this.flags = flags;
         this.flagTileSize = tileSize;
+        repaint();
+    }
+
+    // Solid-colour patches found by FlatPatch (image pixels). null removes them.
+    public void setRegions(java.util.List<Rectangle> regions) {
+        this.regions = regions;
         repaint();
     }
 
@@ -136,6 +143,15 @@ public class ImagePanel extends JPanel {
         }
         if (flags != null && showHeat) {
             drawFlags(g);
+        }
+        if (regions != null && showHeat) {
+            for (Rectangle region : regions) {
+                Rectangle r = toPanel(region);
+                g.setColor(new Color(220, 0, 0, opacity * 255 / 100));
+                g.fillRect(r.x, r.y, r.width, r.height);
+                g.setColor(new Color(160, 0, 0));
+                g.drawRect(r.x, r.y, r.width - 1, r.height - 1);
+            }
         }
         if (pairs != null) {
             drawPairs(g);

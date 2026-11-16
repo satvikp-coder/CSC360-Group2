@@ -24,7 +24,7 @@ public class Evaluate {
                 System.out.println(name + ",load error: " + e.getMessage().replace(",", ";"));
                 continue;
             }
-            print(name, loaded.format, Analysis.run(loaded.image));
+            print(name, loaded.format, Analysis.run(loaded.image, loaded.format));
         }
         for (int i = 0; i < Controls.BENIGN.length + Controls.MANIPULATED.length; i++) {
             String name = i < Controls.BENIGN.length ? Controls.BENIGN[i] : Controls.MANIPULATED[i - Controls.BENIGN.length];

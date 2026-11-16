@@ -303,6 +303,7 @@ public class App implements ActionListener, ChangeListener {
         imagePanel.setHeat(null, 0, "");
         imagePanel.setPairs(null);
         imagePanel.setFlags(null, 0);
+        imagePanel.setRegions(null);
         imagePanel.setSelected(null);
         histogramPanel.setTitle("Gray histogram (whole image)");
         histogramPanel.setValues(null);
@@ -338,6 +339,7 @@ public class App implements ActionListener, ChangeListener {
         imagePanel.setImage(current.image);
         imagePanel.setPairs(null);
         imagePanel.setFlags(null, 0);
+        imagePanel.setRegions(null);
         imagePanel.setHeat(null, 0, "");
         TamperingAssessment t = analysis.assessment;
         if (choice == 0) {
@@ -346,6 +348,9 @@ public class App implements ActionListener, ChangeListener {
             }
             if (t != null && t.sourceBounds() != null) {
                 imagePanel.setPairs(analysis.copyMove.matches);
+            }
+            if (t != null) {
+                imagePanel.setRegions(t.flatRegions);
             }
         } else if (choice == 1) {
             imagePanel.setHeat(analysis.regions.variation, size, "Regional variation (TVD to neighbour tiles)");
@@ -528,7 +533,7 @@ public class App implements ActionListener, ChangeListener {
         }
 
         protected Analysis doInBackground() {
-            return Analysis.run(loaded.image);
+            return Analysis.run(loaded.image, loaded.format);
         }
 
         protected void done() {

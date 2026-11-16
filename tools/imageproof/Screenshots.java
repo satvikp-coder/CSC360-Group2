@@ -41,7 +41,7 @@ public class Screenshots {
         app.current = LoadedImage.load(new File(samples, sample));
         app.imagePanel.setImage(app.current.image);
         app.clearResults();
-        app.showResults(Analysis.run(app.current.image));
+        app.showResults(Analysis.run(app.current.image, app.current.format));
         app.status.setText(app.describe(app.current) + "  - analysed");
         app.view.setSelectedIndex(view);
         if (row >= 0) {

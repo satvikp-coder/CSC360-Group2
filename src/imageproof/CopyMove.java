@@ -27,7 +27,7 @@ public class CopyMove {
     public static final int MIN_GROUP = 3;          // matches needed with the same shift
     public static final int MAX_BLOCKS = 300000;    // grid positions (a 16 MP image has about 250000)
     public static final int MAX_COMPARISONS = 200000; // full pixel-by-pixel comparisons
-    public static final int MAX_MATCHES = 200;      // candidates we return
+    public static final int MAX_MATCHES = 2000;     // candidates we return (a 256 x 232 clone has 868)
 
     // One candidate pair: block at (x1, y1) has the same pixels as the block at (x2, y2).
     public static class Match {

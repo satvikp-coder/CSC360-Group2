@@ -1,0 +1,29 @@
+Generated 2026-11-17 00:44 on Windows 11 (commit built from working tree)
+Java: java version "24.0.2" 2025-07-15; compiled with maven.compiler.release=17
+
+=== mvn -B clean test ===
+[INFO] Building simple-image-proof 0.1.0
+[INFO] --- build-helper:3.6.0:add-test-source (add-tests) @ simple-image-proof ---
+HistogramTest OK
+ComparisonTest OK
+AnalysisTest OK
+HistogramPanelTest OK
+RegionsTest OK
+NoiseEdgesTest OK
+CopyMoveTest OK
+ImagePanelTest OK
+SamplesTest OK
+TamperingAssessmentTest: 147 checks passed
+LocalAnomalyTest: 34 checks passed (patch flagged 2 tiles = 4.2% of area; 6 benign controls flagged 0)
+FlatPatchTest: 16 checks passed
+All tests passed
+[INFO] BUILD SUCCESS
+
+=== mvn -B package -Dexec.skip=true ===
+[INFO] Building simple-image-proof 0.1.0
+[INFO] --- build-helper:3.6.0:add-test-source (add-tests) @ simple-image-proof ---
+[INFO] Building jar: C:\Users\satvi\Desktop\CSC360-end\CSC360-Group2\target\simple-image-proof-0.1.0.jar
+[INFO] BUILD SUCCESS
+
+=== AssessmentGuiTest (real App on desktop) ===
+AssessmentGuiTest: 23 checks passed; real App workers/EDT, stale load/analysis, replacement, invalid load and failure state

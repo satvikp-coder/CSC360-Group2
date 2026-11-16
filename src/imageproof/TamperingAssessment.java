@@ -19,6 +19,7 @@ public final class TamperingAssessment {
     public final String decisionEvidence;    // technical text for the Advanced details view
     public final String descriptiveMeasurements;
     public final LocalAnomaly local;         // null if the measurements were invalid
+    public final List<Rectangle> flatRegions; // solid-colour patches (bounding boxes), may be empty
     public final boolean areaAvailable;
     public final double areaPercent;         // 0..100, only meaningful if areaAvailable
     public final long flaggedPixels;
@@ -31,7 +32,7 @@ public final class TamperingAssessment {
             + "No notable indicators does not mean original, unedited or authentic. No probability of editing is calculated.";
 
     private TamperingAssessment(Outcome outcome, List<String> reasons, String evidence, String measurements,
-            Rectangle source, Rectangle destination, LocalAnomaly local, long flaggedPixels, long analyzedPixels) {
+            Rectangle source, Rectangle destination, LocalAnomaly local, FlatPatch flat, long flaggedPixels, long analyzedPixels) {
         this.outcome = outcome;
         this.reasons = List.copyOf(reasons.size() > 3 ? reasons.subList(0, 3) : reasons);
         this.decisionEvidence = evidence;
@@ -39,9 +40,10 @@ public final class TamperingAssessment {
         this.source = source == null ? null : new Rectangle(source);
         this.destination = destination == null ? null : new Rectangle(destination);
         this.local = local;
+        this.flatRegions = flat == null ? List.of() : List.copyOf(flat.regions);
         this.analyzedPixels = analyzedPixels;
         boolean ok = local != null && analyzedPixels > 0 && flaggedPixels >= 0 && flaggedPixels <= analyzedPixels
-                && (local.available || source != null);
+                && (local.available || source != null || (flat != null && flat.pixels > 0));
         this.areaAvailable = ok;
         this.flaggedPixels = ok ? flaggedPixels : 0;
         this.areaPercent = ok ? Math.max(0, Math.min(100, 100.0 * flaggedPixels / analyzedPixels)) : 0;
@@ -79,22 +81,26 @@ public final class TamperingAssessment {
     public static TamperingAssessment evaluate(Analysis a) {
         if (!valid(a)) return new TamperingAssessment(Outcome.INCONCLUSIVE,
                 List.of("Measurements are missing or invalid, so no decision can be supported."),
-                "No valid evidence used.", "Unavailable; do not interpret missing values as zero.", null, null, null, 0, 0);
+                "No valid evidence used.", "Unavailable; do not interpret missing values as zero.", null, null, null, null, 0, 0);
         String measurements = context(a);
         LocalAnomaly local = LocalAnomaly.analyze(a);
         CopyResult copy = judgeCopy(a);
-        String evidence = localEvidence(a, local) + "\n" + copy.evidence;
+        FlatPatch flatEvidence = FlatPatch.analyze(a.gray, a.jpeg);
+        String evidence = localEvidence(a, local) + "\n" + flatText(flatEvidence) + "\n" + copy.evidence;
         long total = (long) a.width * a.height;
         boolean localFlags = local.available && local.flaggedTiles > 0;
         boolean copySupported = copy.kind == Kind.SUPPORTED;
+        FlatPatch flat = FlatPatch.analyze(a.gray, a.jpeg);
+        boolean flatFlags = flat.available && flat.pixels > 0;
         if (copySupported) measurements += footprintContext(a, copy.from, "First footprint")
                 + footprintContext(a, copy.to, "Second footprint");
 
-        long flaggedPixels = flaggedArea(a, local, copySupported ? copy.pairs : null);
+        long flaggedPixels = flaggedArea(a, local, copySupported ? copy.pairs : null, flatFlags ? flat : null);
         List<String> reasons = new ArrayList<String>();
         Outcome outcome;
-        if (localFlags || copySupported) {
+        if (localFlags || copySupported || flatFlags) {
             outcome = Outcome.POSSIBLE_TAMPERING;
+            if (flatFlags) reasons.add("Some areas are perfectly flat (no camera noise) in an otherwise noisy image, like a solid paint fill.");
             if (localFlags) {
                 reasons.add("Some neighboring regions have unusually different brightness distributions.");
                 reasons.add("The noise level in the same regions differs from their surroundings.");
@@ -118,18 +124,19 @@ public final class TamperingAssessment {
             reasons.add("No identical copied patch was found. This does not prove the image is original.");
         }
         return new TamperingAssessment(outcome, reasons, evidence, measurements,
-                copySupported ? copy.from : null, copySupported ? copy.to : null, local, flaggedPixels, total);
+                copySupported ? copy.from : null, copySupported ? copy.to : null, local, flatFlags ? flat : null, flaggedPixels, total);
     }
 
     // Pixels covered by flagged tiles and/or supported copy blocks, each pixel counted once.
-    private static long flaggedArea(Analysis a, LocalAnomaly local, List<CopyMove.Match> pairs) {
-        if (pairs == null) return local.available ? local.flaggedPixels : 0;
+    private static long flaggedArea(Analysis a, LocalAnomaly local, List<CopyMove.Match> pairs, FlatPatch flat) {
+        if (pairs == null && flat == null) return local.available ? local.flaggedPixels : 0;
         boolean[][] covered = new boolean[a.height][a.width];
         if (local.available) {
             for (int r = 0; r < a.regions.rows; r++) for (int c = 0; c < a.regions.cols; c++)
                 if (local.flagged[r][c]) paint(covered, a.regions.bounds(r, c));
         }
-        for (CopyMove.Match m : pairs) {
+        if (flat != null) for (Rectangle b : flat.blocks) paint(covered, b);
+        if (pairs != null) for (CopyMove.Match m : pairs) {
             paint(covered, new Rectangle(m.x1, m.y1, CopyMove.BLOCK, CopyMove.BLOCK));
             paint(covered, new Rectangle(m.x2, m.y2, CopyMove.BLOCK, CopyMove.BLOCK));
         }
@@ -151,6 +158,12 @@ public final class TamperingAssessment {
                 + String.format(Locale.ROOT, "%nRule: TVD modified z >= %.1f and >= %.2f; noise ratio >= %.1f vs neighbour median (floor %.0f); "
                 + "not a high edge outlier; needs a neighbouring candidate.", LocalAnomaly.Z_LIMIT, LocalAnomaly.MIN_TVD,
                 LocalAnomaly.NOISE_RATIO, LocalAnomaly.NOISE_FLOOR);
+    }
+
+    private static String flatText(FlatPatch f) {
+        if (!f.available) return "Flat-patch rule: unavailable. " + f.unavailableReason;
+        return String.format(Locale.ROOT, "Flat-patch rule: %d solid patch(es), %d px (noisy blocks %.0f%%; needs >= %d connected equal 4x4 blocks with a 3x3 core, value not 0/255).",
+                f.regions.size(), f.pixels, 100 * f.noisyShare, FlatPatch.MIN_BLOCKS);
     }
 
     private static int count(boolean[][] grid) {

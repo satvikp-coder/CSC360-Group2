@@ -16,6 +16,7 @@ public class AllTests {
         SamplesTest.main(args);
         TamperingAssessmentTest.main(args);
         LocalAnomalyTest.main(args);
+        FlatPatchTest.main(args);
         System.out.println("All tests passed");
     }
 }

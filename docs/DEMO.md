@@ -15,7 +15,7 @@ A short live demo using only the committed `samples/`, plus the questions we exp
 | 1 | Open `original.png`, **Analyze** | Global histogram, mean 126.35, std 50.22, entropy 7.650 bits. The note: measurements, not a verdict. |
 | 2 | Click a tile | That tile's own histogram and numbers. Regional variation = average TVD to the 4 neighbour tiles. |
 | 3 | Open `copied.png`, **Analyze**, view **Copy-move candidates** | 25 pairs, all with shift (152, 96): the known copied 48 x 48 square. |
-| 4 | Open `repeated.png`, **Analyze**, **Copy-move candidates** | 200 candidates and LIMIT REACHED, but nothing was edited: repeated patterns are a false positive. |
+| 4 | Open `repeated.png`, **Analyze**, **Copy-move candidates** | 2000 candidates (the limit) and LIMIT REACHED, but nothing was edited: repeated patterns are a false positive. |
 | 5 | Open `inserted.png`, **Analyze**, views **Noise** and **Edge strength** | Highest noise and edge values are in tile r1 c2, which covers part of the inserted square, but object outlines do the same in normal photos. Nothing is flagged (0.0%): a missed change. |
 | 6 | Open `shuffled.png`, **Analyze** | Same mean, std and entropy as the original although it is pure noise: a global histogram ignores pixel positions. |
 | 7 | Open `corrupt.png`, then `unsupported.txt` | Error dialog; the previous image and results stay. |

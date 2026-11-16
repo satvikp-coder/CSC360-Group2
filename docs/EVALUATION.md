@@ -51,7 +51,7 @@ Full table: [RESULTS.csv](RESULTS.csv). Tiles are written `r<row> c<col>` (64 px
 | brightness.png | 163.43 | 47.01 | 7.504 | 0.667 (r2 c0) | 127.98 (r1 c1) | 54.71 (r1 c0) | 0 |
 | blurred.png | 126.35 | 49.00 | 7.603 | 0.723 (r1 c3) | 6.58 (r0 c3) | 24.18 (r1 c0) | 0 |
 | shuffled.png | 126.35 | 50.22 | 7.650 | 0.137 (r0 c3) | 2324.54 (r1 c2) | 226.02 (r0 c0) | 0 |
-| repeated.png | 24.21 | 12.92 | 5.455 | 0.000 (r0 c0) | 106.18 (r1 c3) | 49.53 (r1 c1) | 200 (limit reached), shift (32, 0) |
+| repeated.png | 24.21 | 12.92 | 5.455 | 0.000 (r0 c0) | 106.18 (r1 c3) | 49.53 (r1 c1) | 2000 (limit reached), shift (32, 0) |
 | grayscale.png | 126.35 | 50.22 | 7.650 | 0.631 (r1 c3) | 127.98 (r1 c1) | 54.71 (r1 c0) | 0 |
 | transparent.png | 200.19 | 63.92 | 4.749 | 0.717 (r1 c2) | 176.41 (r0 c2) | 63.49 (r0 c2) | 0 |
 | corrupt.png | load error: "Error reading PNG metadata" | | | | | | |
@@ -61,7 +61,7 @@ Full table: [RESULTS.csv](RESULTS.csv). Tiles are written `r<row> c<col>` (64 px
 
 - **Copy-move works on the exact copy**: 25 pairs, all with the known shift (152, 96), green/magenta boxes on the known rectangles ([screenshot](images/app-copy-move.png)).
 - **JPEG did not remove all matches here**: 15 of 25 pairs survive because the shift is a multiple of 8, the JPEG block size, so copied blocks are often encoded the same. With other shifts or re-saving, exact matching would usually fail.
-- **False positive**: `repeated.png` has no edit but gives 200 candidates (the limit) because the pattern repeats. Candidates are not proof ([screenshot](images/app-repeated.png)).
+- **False positive**: `repeated.png` has no edit but gives 2000 candidates (the limit) because the pattern repeats. Candidates are not proof ([screenshot](images/app-repeated.png)).
 - **Missed change**: `inserted.png` gives no copy-move candidates (the square is flat and not copied). Its tile r1 c2 does have the highest noise and edge values, but so do normal object edges; the largest regional variation tile (r1 c3) is the same as in the original.
 - **Global histogram ignores position**: `shuffled.png` has exactly the same mean, std and entropy as the original although it looks like noise. Its regional variation drops (all tiles look alike) while noise and edge values jump.
 - **Normal edits change numbers**: brightness moves the mean by about 37; blur cuts the noise variance from 127.98 to 6.58.
@@ -246,6 +246,21 @@ Reproduce: `java -cp target/classes:target/test-classes imageproof.Benchmark hel
 | Identical natural motifs | C | Pixel-identical patches look the same whether copied or naturally repeated. Many matches, several shifts or a cap give "Inconclusive" (preserved). |
 | Small images | Inconclusive kept | A 32 px tile (adaptive) removed most "Inconclusive" results on development but detected 0 of 14 small edits, so it would only replace an honest "Inconclusive" with a misleading "No notable indicators". **Rejected.** The message now starts with "Limited analysis". |
 | Uniform images | C | No local contrast to compare. |
+
+## Flat-patch indicator and the clone cap (added after the first benchmark)
+
+`FlatPatch` flags groups of at least 6 connected, exactly equal 4 x 4 pixel blocks
+of one value (not 0 or 255) with a solid 3 x 3 block core, in an image where at
+least 60% of blocks have pixel variation. Off for JPEG input (compression creates flat
+areas) and for images under 100 blocks. It counts toward the anomalous area.
+Development: all 14 Paint-style fills found, 0 genuine false warnings once the
+solid-core and JPEG rules were added (first version: 8 false warnings from text bars
+and JPEG re-saves). Held-out, run once: 18 of 18 fills found, 0 of 54 genuine flagged.
+Brush strokes and text are not found by design.
+
+The copy-move candidate cap was raised from 200 to 2000 pairs after a clone of a
+cloud (220 pairs) and of a house (868 pairs) in the colour gallery were wrongly
+called a repeated pattern. See [REPORT.md](REPORT.md) for the gallery with proof.
 
 ## Reproduce assessment tests
 
