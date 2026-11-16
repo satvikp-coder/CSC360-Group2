@@ -44,7 +44,7 @@ public class TamperingAssessmentTest {
     }
 
     public static void main(String[] args) throws Exception {
-        for (String name : new String[]{"original.png", "inserted.png", "brightness.png", "blurred.png", "shuffled.png", "grayscale.png", "transparent.png"}) {
+        for (String name : new String[]{"original.png", "brightness.png", "blurred.png", "shuffled.png", "grayscale.png", "transparent.png"}) {
             Analysis a = sample(name);
             check(a.assessment.outcome == TamperingAssessment.Outcome.NO_CLEAR_INDICATORS, "limited no-indicator result: " + name);
             check(a.assessment.details().contains("does not prove the image is original"), "known misses never certify authenticity");
@@ -52,6 +52,15 @@ public class TamperingAssessmentTest {
             check(a.assessment.sourceBounds() == null, "no fabricated flagged area");
             check(a.assessment.details().equals(TamperingAssessment.evaluate(a).details()), "deterministic explanation");
         }
+        // The inserted square is a solid fill: the flat-patch indicator finds it, inside the known rectangle.
+        Analysis inserted = sample("inserted.png");
+        Rectangle known = new Rectangle(SampleGenerator.INSERTED[0], SampleGenerator.INSERTED[1], SampleGenerator.INSERTED[2], SampleGenerator.INSERTED[3]);
+        check(inserted.assessment.outcome == TamperingAssessment.Outcome.POSSIBLE_TAMPERING && !inserted.assessment.flatRegions.isEmpty(), "solid inserted square flagged");
+        for (Rectangle region : inserted.assessment.flatRegions) check(known.contains(region), "flat region lies inside the inserted square: " + region);
+        check(inserted.assessment.areaAvailable && inserted.assessment.areaPercent > 0 && inserted.assessment.areaPercent < 5, "flat area is measured");
+        check(inserted.assessment.reasons.get(0).contains("perfectly flat"), "reason names the flat patch");
+        // The same pixels flagged as a JPEG are not trusted: compression creates flat areas by itself.
+        check(!FlatPatch.analyze(inserted.gray, true).available, "flat patches ignored for JPEG input");
         Analysis copied = sample("copied.png"), jpeg = sample("copied.jpg");
         check(jpeg.assessment.outcome == TamperingAssessment.Outcome.POSSIBLE_TAMPERING && jpeg.copyMove.matches.size() == 15,
                 "JPEG preserves a smaller qualifying patch in this fixture");
@@ -63,7 +72,13 @@ public class TamperingAssessmentTest {
         System.out.println("JPEG assessment: " + jpeg.assessment.outcome + "; " + jpeg.assessment.reasons.get(0));
         System.out.println("JPEG footprints: " + TamperingAssessment.bounds(jpeg.assessment.sourceBounds()) + " -> " + TamperingAssessment.bounds(jpeg.assessment.destinationBounds()));
         Analysis repeated = sample("repeated.png");
-        check(repeated.copyMove.matches.size() == 200 && repeated.copyMove.truncated, "known repeated-pattern fixture");
+        check(repeated.copyMove.matches.size() == CopyMove.MAX_MATCHES && repeated.copyMove.truncated, "known repeated-pattern fixture");
+        // A large genuine clone (529 pairs, more than the old cap of 200) is supported, not mistaken for a repeated pattern.
+        int[][] bigClone = CopyMoveTest.noise(512, 384, 4242);
+        CopyMoveTest.copy(bigClone, 32, 32, 280, 152, 192);
+        Analysis cloneResult = image(bigClone);
+        check(cloneResult.copyMove.matches.size() == 529 && !cloneResult.copyMove.truncated, "large clone fully reported: " + cloneResult.copyMove.matches.size());
+        check(cloneResult.assessment.outcome == TamperingAssessment.Outcome.POSSIBLE_TAMPERING, "large clone is possible tampering");
         check(repeated.assessment.outcome == TamperingAssessment.Outcome.INCONCLUSIVE, "raw count cannot trigger a warning");
         check(repeated.assessment.decisionEvidence.contains("cap: NO"), "incomplete search disclosed");
         check(repeated.assessment.sourceBounds() == null, "ambiguous matches are not designated supported patches");
@@ -107,12 +122,12 @@ public class TamperingAssessmentTest {
         int[][] multiple = CopyMoveTest.noise(128, 128, 809);
         CopyMoveTest.copy(multiple, 8, 8, 64, 8, 24); CopyMoveTest.copy(multiple, 8, 8, 64, 64, 24);
         check(image(multiple).assessment.outcome == TamperingAssessment.Outcome.INCONCLUSIVE, "multiple actual displacements are ambiguous");
-        for (int high : new int[]{9, 10}) {
+        for (int high : new int[]{3, 4}) {
             int[][] texture = new int[24][56];
             for (int y = 0; y < 24; y++) for (int x = 0; x < 56; x++) texture[y][x] = (x + y) % 2 * high;
             Analysis threshold = pairs(image(texture), 32, 0, new int[][]{{0, 0}, {8, 0}, {0, 8}});
-            check(TamperingAssessment.evaluate(threshold).outcome == (high == 10 ? TamperingAssessment.Outcome.POSSIBLE_TAMPERING : TamperingAssessment.Outcome.INCONCLUSIVE),
-                    "inherited texture variance 25 boundary, high=" + high);
+            check(TamperingAssessment.evaluate(threshold).outcome == (high == 4 ? TamperingAssessment.Outcome.POSSIBLE_TAMPERING : TamperingAssessment.Outcome.INCONCLUSIVE),
+                    "inherited texture variance 4 boundary (alternating 0/high has variance (high/2)^2), high=" + high);
         }
         int[][] overlap = new int[40][80];
         for (int y = 0; y < 40; y++) for (int x = 0; x < 80; x++) overlap[y][x] = (x + y) % 2 * 200;

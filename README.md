@@ -23,19 +23,22 @@ tables are kept out of the main window; **Advanced details...** shows them.
 How it is decided (all from the single image, no reference image or online
 database): a 64 x 64 tile is **flagged** when its histogram difference to its
 neighbours is a high outlier *and* its noise differs from its neighbours, it is
-not explained by a strong edge, and a neighbouring tile agrees. An exact
-copy-move patch pair is added as separate evidence. Exact rules and thresholds:
+not explained by a strong edge, and a neighbouring tile agrees. Two further
+indicators are separate evidence: an exact copy-move patch pair, and a
+solid-colour (flat) patch in an otherwise noisy PNG, like a Paint fill. Exact rules and thresholds:
 [EVALUATION.md](docs/EVALUATION.md#final-assessment-rule).
 
 - **Possible tampering indicators:** flagged tiles and/or a supported copy-move patch pair.
 - **No notable indicators:** the tests found nothing. This does **not** mean the image is original or authentic.
-- **Inconclusive:** not enough reliable information (tiny or uniform image, invalid data, repeated pattern, copy search only partly covering a big image).
+- **Inconclusive:** not enough reliable information (tiny or uniform image, invalid data, repeated pattern, a copy-search limit).
 
 **Anomalous area = 100 x flagged pixel area / analyzed pixel area.** It says how
 much of the image met the rule. It is **not** a probability of forgery or editing;
 no such probability is calculated (there is no calibration data).
 
-![Selected region and short assessment on Windows](docs/images/desktop-selected-region.png)
+**Full report with proof, screenshots and benchmark: [docs/REPORT.md](docs/REPORT.md).**
+
+![Painted balloon detected](docs/report/gui-2-lake-painted-balloon.png)
 
 See [recorded desktop checks](docs/MANUAL_TEST.md#recorded-verification-local-anomaly-rule-and-concise-ui-2026-11-16).
 
@@ -107,7 +110,7 @@ More: [Architecture](docs/ARCHITECTURE.md), [Manual test](docs/MANUAL_TEST.md), 
 
 - Histograms ignore pixel positions: `shuffled.png` has exactly the same global histogram as the original.
 - Normal edges and texture give high variation, noise and edge values.
-- The local rule sees regions whose histogram **and** noise both differ from their surroundings. It misses global changes (brightness, blur), shuffled pixels and flat inserted objects, and natural content can fire it. See the false positives and misses in [EVALUATION.md](docs/EVALUATION.md#actual-assessment-results).
+- The local rule sees regions whose histogram **and** noise both differ from their surroundings. It misses global changes (brightness, blur), shuffled pixels and flat inserted objects, and natural content can fire it. On a synthetic development/held-out benchmark it detected none of 80 local edits and 12 of 32 copy-moves, with no false warnings on 96 genuine images ([details](docs/EVALUATION.md#benchmark-with-development-and-held-out-scenes)).
 - Copy-move only finds exact copies moved by a multiple of 8 px, no rotation or scaling. Repeated patterns give false candidates. Big images are only partly searched (limit shown on screen).
 
 ## Team

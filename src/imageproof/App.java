@@ -303,6 +303,7 @@ public class App implements ActionListener, ChangeListener {
         imagePanel.setHeat(null, 0, "");
         imagePanel.setPairs(null);
         imagePanel.setFlags(null, 0);
+        imagePanel.setRegions(null);
         imagePanel.setSelected(null);
         histogramPanel.setTitle("Gray histogram (whole image)");
         histogramPanel.setValues(null);
@@ -338,6 +339,7 @@ public class App implements ActionListener, ChangeListener {
         imagePanel.setImage(current.image);
         imagePanel.setPairs(null);
         imagePanel.setFlags(null, 0);
+        imagePanel.setRegions(null);
         imagePanel.setHeat(null, 0, "");
         TamperingAssessment t = analysis.assessment;
         if (choice == 0) {
@@ -346,6 +348,9 @@ public class App implements ActionListener, ChangeListener {
             }
             if (t != null && t.sourceBounds() != null) {
                 imagePanel.setPairs(analysis.copyMove.matches);
+            }
+            if (t != null) {
+                imagePanel.setRegions(t.flatRegions);
             }
         } else if (choice == 1) {
             imagePanel.setHeat(analysis.regions.variation, size, "Regional variation (TVD to neighbour tiles)");
@@ -443,12 +448,13 @@ public class App implements ActionListener, ChangeListener {
     static String copyMoveText(CopyMove c) {
         String text = "Copy-move candidates (exact 16 x 16 blocks, same shift at least "
                 + CopyMove.MIN_GROUP + " times)\n"
-                + "  Blocks checked: " + c.blocksChecked + ", comparisons: " + c.comparisons + "\n"
+                + "  Blocks checked: " + c.blocksChecked + " of " + c.blocksTotal
+                + String.format(Locale.ROOT, " (%.0f%% of the image)", c.coveragePercent())
+                + ", comparisons: " + c.comparisons + "\n"
                 + "  Candidate pairs: " + c.matches.size() + "\n";
         if (c.truncated) {
-            text = text + "  LIMIT REACHED: only part of the image was searched (limits "
-                    + CopyMove.MAX_BLOCKS + " blocks, " + CopyMove.MAX_COMPARISONS + " comparisons, "
-                    + CopyMove.MAX_MATCHES + " pairs shown).\n";
+            text = text + "  LIMIT REACHED (limits " + CopyMove.MAX_BLOCKS + " blocks, " + CopyMove.MAX_COMPARISONS
+                    + " comparisons, " + CopyMove.MAX_MATCHES + " pairs shown): the search is incomplete.\n";
         }
         for (int i = 0; i < c.matches.size() && i < 10; i++) {
             CopyMove.Match m = c.matches.get(i);
@@ -527,7 +533,7 @@ public class App implements ActionListener, ChangeListener {
         }
 
         protected Analysis doInBackground() {
-            return Analysis.run(loaded.image);
+            return Analysis.run(loaded.image, loaded.format);
         }
 
         protected void done() {

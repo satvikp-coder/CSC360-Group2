@@ -75,10 +75,28 @@ public class CopyMoveTest {
         // 6. Tiny image: no full block fits, nothing breaks.
         check(CopyMove.analyze(noise(10, 10, 5)).matches.size() == 0, "tiny image");
 
-        // 7. Big image: work stops at the limit and says so.
-        CopyMove big = CopyMove.analyze(noise(1300, 1300, 6));
-        check(big.truncated, "big image truncated");
-        check(big.comparisons <= CopyMove.MAX_COMPARISONS, "comparison limit kept");
+        // 7. Big image: every grid position is searched (earlier versions stopped after 20000 blocks),
+        //    so a copy in the LAST rows is found and coverage is 100%.
+        int[][] bigImage = noise(1300, 1300, 6);
+        copy(bigImage, 40, 1200, 704, 1104, 48);
+        long start = System.currentTimeMillis();
+        CopyMove big = CopyMove.analyze(bigImage);
+        long millis = System.currentTimeMillis() - start;
+        check(!big.truncated && big.blocksChecked == big.blocksTotal && big.coveragePercent() == 100, "big image fully covered");
+        check(big.matches.size() == 25, "copy near the bottom of a big image found: " + big.matches.size());
+        check(big.comparisons <= CopyMove.MAX_COMPARISONS && millis < 20000, "work stays bounded: " + millis + " ms");
+        check(CopyMove.analyze(noise(10, 10, 5)).coveragePercent() == 100, "no blocks, nothing missed");
+
+        // 8. The comparison limit still applies and is reported (heavily repeated content).
+        int[][] periodic = new int[1000][1000];
+        int[][] cell = noise(32, 32, 7);
+        for (int y = 0; y < 1000; y++) {
+            for (int x = 0; x < 1000; x++) {
+                periodic[y][x] = cell[y % 32][x % 32];
+            }
+        }
+        CopyMove many = CopyMove.analyze(periodic);
+        check(many.truncated && many.comparisons <= CopyMove.MAX_COMPARISONS, "periodic image hits a limit and says so");
 
         System.out.println("CopyMoveTest OK");
     }

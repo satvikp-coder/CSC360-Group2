@@ -1,0 +1,12 @@
+file,what_was_done,assessment,anomalous_area_pct,flagged_tiles,flat_patches,copy_pairs,millis
+lake-1-original.png,untouched,NO_CLEAR_INDICATORS,0.0,0,0,0,978
+lake-2-painted-balloon.png,flat-colour balloon painted in the sky,POSSIBLE_TAMPERING,1.1,0,4,0,404
+lake-3-cloned-cloud.png,cloud cloned (shift multiple of 8 px),POSSIBLE_TAMPERING,4.6,0,0,220,343
+lake-4-cloned-cloud-offgrid.png,cloud cloned (shift of -525 and +109 px is NOT a multiple of 8),NO_CLEAR_INDICATORS,0.0,0,0,0,324
+lake-5-pasted-object.png,soft-edged cut-out pasted from another image,NO_CLEAR_INDICATORS,0.0,0,0,0,286
+lake-6-brightened-patch.png,feathered brightness patch,NO_CLEAR_INDICATORS,0.0,0,0,0,236
+meadow-1-original.png,untouched,NO_CLEAR_INDICATORS,0.0,0,0,0,251
+meadow-2-painted-balloon.png,flat-colour balloon painted in the sky,POSSIBLE_TAMPERING,1.1,0,4,0,280
+meadow-3-cloned-house.png,house cloned next to itself (shift multiple of 8 px),POSSIBLE_TAMPERING,17.0,0,0,868,311
+meadow-4-pasted-object.png,soft-edged cut-out pasted from another image,NO_CLEAR_INDICATORS,0.0,0,0,0,257
+meadow-5-brightened-patch.png,feathered brightness patch,NO_CLEAR_INDICATORS,0.0,0,0,0,319

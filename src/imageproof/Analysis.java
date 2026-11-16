@@ -19,8 +19,16 @@ public class Analysis {
     public CopyMove copyMove;     // copy-move candidates
     public TamperingAssessment assessment; // cautious rule over the completed measurements
 
+    public boolean jpeg;          // the file was a JPEG (flat areas are normal there)
+
     public static Analysis run(BufferedImage image) {
+        return run(image, "");
+    }
+
+    // format is the file format name from LoadedImage ("PNG" or "JPEG"), "" if unknown.
+    public static Analysis run(BufferedImage image, String format) {
         Analysis a = new Analysis();
+        a.jpeg = format != null && format.toUpperCase().startsWith("JPEG");
         a.width = image.getWidth();
         a.height = image.getHeight();
         a.gray = Histogram.grayPixels(image);
