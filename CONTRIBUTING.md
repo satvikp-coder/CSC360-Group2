@@ -23,7 +23,7 @@ This repository is for **CSC360 Group 2**. Contributions should support the assi
 
 ## Documentation updates
 
-When behaviour changes, update `README.md` (setup, usage, tested behaviour) and `docs/PROJECT_PLAN.md` (decisions). If measurements change, rerun `Evaluate` and update `docs/EVALUATION.md`, `docs/RESULTS.csv` and the numbers in `docs/DEMO.md`.
+When behaviour changes, update `README.md` (setup, usage, tested behaviour) and `docs/PROJECT_PLAN.md` (decisions). If measurements change, rerun `Evaluate` and update `docs/EVALUATION.md` and `docs/RESULTS.csv`.
 
 ## Questions and proposed changes
 
