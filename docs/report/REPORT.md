@@ -52,13 +52,13 @@ enough reliable information, for example a tiny image or a heavily repeated patt
 
 ## 3. Live proof on new colour test images
 
-The two scenes are drawn by code ([`Gallery.java`](../tools/imageproof/Gallery.java)): a
+The two scenes are drawn by code ([`Gallery.java`](../../tools/imageproof/Gallery.java)): a
 sunset mountain lake with clouds and reflections, and a meadow with a farmhouse,
 fence and flowers, each with camera-style grain. They are not photographs and not
 AI-generated. Edits mimic what people really do: paint a flat shape, clone-stamp a
 region, paste a cut-out from another picture, dodge (brighten) a patch.
 
-Every number below was produced by the real analysis ([`gallery-results.csv`](report/gallery-results.csv)).
+Every number below was produced by the real analysis ([`gallery-results.csv`](gallery-results.csv)).
 
 | File | What was done | Result | Anomalous area | Outcome |
 |---|---|---|---|---|
@@ -76,7 +76,7 @@ Every number below was produced by the real analysis ([`gallery-results.csv`](re
 
 ### 3.1 Clean image: nothing flagged
 
-![Lake, untouched](../assets/report/gui-1-lake-original.png)
+![Lake, untouched](../../assets/report/gui-1-lake-original.png)
 
 ### 3.2 Painted balloon: detected
 
@@ -84,24 +84,24 @@ A flat-colour balloon drawn over the sky has *no camera grain*. The flat-patch
 rule finds it and the overlay marks it. (Area is small, 1.1%, because only the
 balloon's solid pixels count.)
 
-![Lake with a painted balloon](../assets/report/gui-2-lake-painted-balloon.png)
+![Lake with a painted balloon](../../assets/report/gui-2-lake-painted-balloon.png)
 
 ### 3.3 Clone-stamped cloud: detected
 
 A cloud was copied elsewhere in the sky. The detector finds 220 pairs of exactly
 equal blocks that share one shift and draws source (green) and copy (magenta).
 
-![Lake with a cloned cloud](../assets/report/gui-3-lake-cloned-cloud.png)
+![Lake with a cloned cloud](../../assets/report/gui-3-lake-cloned-cloud.png)
 
 ### 3.4 Cloned house: detected
 
 The whole farmhouse was cloned next to itself (868 matching block pairs, 17.0% of the area).
 
-![Meadow with a cloned house](../assets/report/gui-6-meadow-cloned-house.png)
+![Meadow with a cloned house](../../assets/report/gui-6-meadow-cloned-house.png)
 
 ### 3.5 Painted balloon on a second scene: detected
 
-![Meadow with a painted balloon](../assets/report/gui-7-meadow-painted-balloon.png)
+![Meadow with a painted balloon](../../assets/report/gui-7-meadow-painted-balloon.png)
 
 ### 3.6 Misses, shown honestly
 
@@ -109,12 +109,12 @@ The whole farmhouse was cloned next to itself (868 matching block pairs, 17.0% o
 pasting, its grain matches the surroundings, so none of the rules see a
 difference.
 
-![Lake with a pasted object, not flagged](../assets/report/gui-4-lake-pasted-object-missed.png)
+![Lake with a pasted object, not flagged](../../assets/report/gui-4-lake-pasted-object-missed.png)
 
 **A feathered brightness patch** is *not* flagged: a smoothly lightened area looks
 exactly like natural lighting or a shadow from one image alone.
 
-![Lake with a brightened patch, not flagged](../assets/report/gui-5-lake-brightened-patch-missed.png)
+![Lake with a brightened patch, not flagged](../../assets/report/gui-5-lake-brightened-patch-missed.png)
 
 **A clone whose shift is not a multiple of 8 px** is also missed
 (`lake-4-cloned-cloud-offgrid.png`): exact block matching only works on the 8 px grid.
@@ -124,9 +124,9 @@ exactly like natural lighting or a shadow from one image alone.
 Clicking a tile shows its own histogram and a short summary; the assessment above
 does not change. The window stays usable at its minimum size (920 x 700).
 
-![Selected region](../assets/report/gui-8-selected-region.png)
-![Minimum window size](../assets/report/gui-9-minimum-size.png)
-![Advanced details window](../assets/report/gui-10-advanced-details.png)
+![Selected region](../../assets/report/gui-8-selected-region.png)
+![Minimum window size](../../assets/report/gui-9-minimum-size.png)
+![Advanced details window](../../assets/report/gui-10-advanced-details.png)
 
 ---
 
@@ -214,7 +214,7 @@ into misleading "No notable indicators").
 
 | Item | Result |
 |---|---|
-| `mvn -B clean test` | Passed. Log: [`test-log.txt`](report/test-log.txt) |
+| `mvn -B clean test` | Passed. Log: [`test-log.txt`](test-log.txt) |
 | `mvn -B package -Dexec.skip=true` | BUILD SUCCESS, jar built |
 | Test programs | Histogram, Comparison, Analysis, HistogramPanel, Regions, NoiseEdges, CopyMove, ImagePanel, Samples (all OK) |
 | `TamperingAssessmentTest` | 147 |
@@ -223,7 +223,7 @@ into misleading "No notable indicators").
 | `AssessmentGuiTest` | 23 |
 | `AssessmentGuiTest` (real window) | 23 checks passed |
 | Real desktop screenshots | 10 in this folder, inspected by eye: assessment, overlay, region summary, minimum size, Advanced details |
-| Opacity 0/25/50/75/100% | Pixel in a flagged tile read 121,121,121 / 145,91,91 / 171,61,61 / 195,30,30 / 220,0,0 ([MANUAL_TEST.md](MANUAL_TEST.md)) |
+| Opacity 0/25/50/75/100% | Pixel in a flagged tile read 121,121,121 / 145,91,91 / 171,61,61 / 195,30,30 / 220,0,0 ([MANUAL_TEST.md](../MANUAL_TEST.md)) |
 | Large image (4000 x 3000) | 100% copy-search coverage, 5.2 s, 146 MB heap, worst UI delay 42 ms |
 | Stale-result protection | Forced out-of-order worker completion: old results never appear for a new image |
 | CI | GitHub Actions, Temurin 17, Ubuntu and Windows (green on every merged head) |
@@ -273,13 +273,13 @@ java -cp 'target/classes;target/test-classes' imageproof.AssessmentGuiTest
 
 | Path | Content |
 |---|---|
-| `../samples/gallery/*.png` | The 11 colour test images (2 clean, 9 edited) |
-| `report/gallery-results.csv` | Real analysis result per image |
-| `../assets/report/gui-*.png` | Real-window screenshots |
-| `report/benchmark-tables.md` | Benchmark tables (generated from the CSVs) |
-| `report/test-log.txt` | Test, build and GUI-test output |
-| `BENCHMARK_DEV.csv`, `BENCHMARK_HELDOUT.csv` | One row per benchmark image |
-| `EVALUATION.md`, `MANUAL_TEST.md`, `ARCHITECTURE.md` | Detailed method, manual checks and design |
+| `../../samples/gallery/*.png` | The 11 colour test images (2 clean, 9 edited) |
+| `gallery-results.csv` | Real analysis result per image |
+| `../../assets/report/gui-*.png` | Real-window screenshots |
+| `benchmark-tables.md` | Benchmark tables (generated from the CSVs) |
+| `test-log.txt` | Test, build and GUI-test output |
+| `../BENCHMARK_DEV.csv`, `../BENCHMARK_HELDOUT.csv` | One row per benchmark image |
+| `../EVALUATION.md`, `../MANUAL_TEST.md`, `../ARCHITECTURE.md` | Detailed method, manual checks and design |
 
 *This tool describes measurable image properties and where they look unusual. It
 cannot prove that an image is authentic or forged.*

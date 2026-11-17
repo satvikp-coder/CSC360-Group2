@@ -260,7 +260,7 @@ Brush strokes and text are not found by design.
 
 The copy-move candidate cap was raised from 200 to 2000 pairs after a clone of a
 cloud (220 pairs) and of a house (868 pairs) in the colour gallery were wrongly
-called a repeated pattern. See [REPORT.md](REPORT.md) for the gallery with proof.
+called a repeated pattern. See [REPORT.md](report/REPORT.md) for the gallery with proof.
 
 ## Reproduce assessment tests
 

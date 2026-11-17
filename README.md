@@ -166,7 +166,7 @@ On Windows use `;` instead of `:` in the class path.
 ## Results and limitations
 
 The tool was evaluated on synthetic images ([docs/EVALUATION.md](docs/EVALUATION.md),
-[docs/REPORT.md](docs/REPORT.md)). In short:
+[docs/report/REPORT.md](docs/report/REPORT.md)). In short:
 
 * Copied regions are found when they are exact and on the 8-pixel grid; solid paint fills are found in noisy PNG images.
 * Many manipulations are **missed**: smoothly brightened patches, pasted objects whose noise matches, rotated or re-compressed copies, global brightness or blur changes, and shuffled pixels.
@@ -183,7 +183,7 @@ The tool was evaluated on synthetic images ([docs/EVALUATION.md](docs/EVALUATION
 
 * [Java API documentation (Javadoc) guide](docs/JAVADOC.md)
 * [Architecture](docs/ARCHITECTURE.md)
-* [Evaluation and known limitations](docs/EVALUATION.md) and the [final report](docs/REPORT.md)
+* [Evaluation and known limitations](docs/EVALUATION.md) and the [final report](docs/report/REPORT.md)
 * [Manual test guide](docs/MANUAL_TEST.md)
 * [Java concepts used](docs/JAVA_CONCEPTS.md)
 * [Project plan and decisions](docs/PROJECT_PLAN.md)
