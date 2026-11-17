@@ -17,6 +17,9 @@ import java.awt.image.BufferedImage;
  */
 public class Analysis {
 
+    /** Creates an empty result; use {@link #run(java.awt.image.BufferedImage)} to populate it. */
+    public Analysis() {}
+
     /** Image width in pixels. */
     public int width;
     /** Image height in pixels. */

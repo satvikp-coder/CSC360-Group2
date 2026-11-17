@@ -20,6 +20,9 @@ import java.awt.image.BufferedImage;
  */
 public class Edges {
 
+    /** Creates an instance; edge measurements are provided by static methods. */
+    public Edges() {}
+
     /** Biggest possible strength: {@code sqrt(2) * 4 * 255}. */
     public static final double MAX_STRENGTH = Math.sqrt(2) * 4 * 255;
 

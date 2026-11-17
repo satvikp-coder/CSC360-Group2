@@ -16,6 +16,9 @@ import java.awt.Rectangle;
  */
 public class Noise {
 
+    /** Creates an instance; noise measurements are provided by static methods. */
+    public Noise() {}
+
     /**
      * Gray value of a pixel minus the mean of its 3 x 3 neighbourhood.
      * Neighbours outside the image are left out of the mean.

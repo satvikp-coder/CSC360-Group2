@@ -1,7 +1,7 @@
 package imageproof;
 
-// Runs every test. "mvn test" calls this. Any failure stops with an error,
-// so Maven (and CI) report a failed build.
+// Runs the headless tests. AssessmentGuiTest requires a desktop and is run separately.
+// Any failure stops with an error, so Maven (and CI) report a failed build.
 public class AllTests {
 
     public static void main(String[] args) throws Exception {
@@ -14,6 +14,7 @@ public class AllTests {
         CopyMoveTest.main(args);
         ImagePanelTest.main(args);
         SamplesTest.main(args);
+        LoadedImageTest.main(args);
         TamperingAssessmentTest.main(args);
         LocalAnomalyTest.main(args);
         FlatPatchTest.main(args);

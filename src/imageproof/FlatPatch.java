@@ -28,6 +28,9 @@ import java.util.ArrayList;
  */
 public class FlatPatch {
 
+    /** Creates an empty result; use {@link #analyze(int[][], boolean)} to search an image. */
+    public FlatPatch() {}
+
     /** Block side length in pixels (4). */
     public static final int BLOCK = 4;
     /** Smallest patch: 6 blocks, which is 96 pixels of one solid value. */

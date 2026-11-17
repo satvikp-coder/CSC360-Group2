@@ -17,6 +17,9 @@ import java.awt.Rectangle;
  */
 public class Regions {
 
+    /** Creates an empty result; use {@link #analyze(int[][], int)} to measure a grid. */
+    public Regions() {}
+
     /** Default tile size in pixels (64). */
     public static final int TILE = 64;
 

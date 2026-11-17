@@ -38,6 +38,9 @@ import java.util.LinkedHashMap;
  */
 public class CopyMove {
 
+    /** Creates an empty result; use {@link #analyze(int[][])} to search an image. */
+    public CopyMove() {}
+
     /** Block side length in pixels (16). */
     public static final int BLOCK = 16;
     /** Distance in pixels between block positions (8). */
