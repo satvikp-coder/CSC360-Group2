@@ -43,4 +43,4 @@ Automated: `mvn test` (see `javatest/imageproof`). Measured sample results: [EVA
 ## Remaining
 
 - Manual GUI walkthrough by hand: record outcomes in `MANUAL_TEST.md`.
-- Course submission format, presentation and deadline: to confirm with the instructor.
+- Course submission format and deadline: to confirm with the instructor.
