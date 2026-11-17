@@ -59,9 +59,9 @@ Full table: [RESULTS.csv](RESULTS.csv). Tiles are written `r<row> c<col>` (64 px
 
 ## What the numbers show
 
-- **Copy-move works on the exact copy**: 25 pairs, all with the known shift (152, 96), green/magenta boxes on the known rectangles ([screenshot](images/app-copy-move.png)).
+- **Copy-move works on the exact copy**: 25 pairs, all with the known shift (152, 96), green/magenta boxes on the known rectangles ([screenshot](../assets/images/app-copy-move.png)).
 - **JPEG did not remove all matches here**: 15 of 25 pairs survive because the shift is a multiple of 8, the JPEG block size, so copied blocks are often encoded the same. With other shifts or re-saving, exact matching would usually fail.
-- **False positive**: `repeated.png` has no edit but gives 2000 candidates (the limit) because the pattern repeats. Candidates are not proof ([screenshot](images/app-repeated.png)).
+- **False positive**: `repeated.png` has no edit but gives 2000 candidates (the limit) because the pattern repeats. Candidates are not proof ([screenshot](../assets/images/app-repeated.png)).
 - **Missed change**: `inserted.png` gives no copy-move candidates (the square is flat and not copied). Its tile r1 c2 does have the highest noise and edge values, but so do normal object edges; the largest regional variation tile (r1 c3) is the same as in the original.
 - **Global histogram ignores position**: `shuffled.png` has exactly the same mean, std and entropy as the original although it looks like noise. Its regional variation drops (all tiles look alike) while noise and edge values jump.
 - **Normal edits change numbers**: brightness moves the mean by about 37; blur cuts the noise variance from 127.98 to 6.58.

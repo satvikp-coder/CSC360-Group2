@@ -17,7 +17,7 @@ Analysis --> App shows a short assessment, ImagePanel (flags / heatmap / boxes),
              a short selected-region text; tables only in the Advanced details window
 ```
 
-Diagrams: [pixel to histogram](images/pixel-to-histogram.svg), [TVD between two histograms](images/histogram-compare.svg) (16 bins shown; the app uses 256).
+Diagrams: [pixel to histogram](../assets/images/pixel-to-histogram.svg), [TVD between two histograms](../assets/images/histogram-compare.svg) (16 bins shown; the app uses 256).
 
 ## Classes (`src/imageproof`)
 

@@ -8,7 +8,7 @@ import javax.imageio.ImageIO;
 import javax.swing.SwingUtilities;
 
 // Draws the real App window into PNG files for the README (needs a desktop, not headless).
-// Run: java -cp target/classes:target/test-classes imageproof.Screenshots samples docs/images
+// Run: java -cp target/classes:target/test-classes imageproof.Screenshots samples assets/images
 public class Screenshots {
 
     static String samples;

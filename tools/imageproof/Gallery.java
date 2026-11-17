@@ -15,7 +15,7 @@ import javax.imageio.ImageIO;
 
 // Draws two good-looking colour scenes (made entirely by code, no photos, no AI) with camera-style
 // grain, then makes realistic edits and runs the real analysis on every file.
-// Run: java -cp target/classes;target/test-classes imageproof.Gallery docs/report/gallery
+// Run: java -cp target/classes;target/test-classes imageproof.Gallery samples/gallery
 public class Gallery {
 
     static final int W = 1024, H = 683;

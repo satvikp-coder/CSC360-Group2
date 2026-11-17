@@ -7,7 +7,7 @@
 A Java desktop application that examines **one image** using histograms and other
 basic image-processing techniques, and highlights regions that look unusual.
 
-![Upload an image, press Analyze and read the assessment](docs/gifs/upload-and-analyze.gif)
+![Upload an image, press Analyze and read the assessment](assets/gifs/upload-and-analyze.gif)
 
 *Real screen recording of the application: open a sample image, press Analyze, read the
 assessment, the anomalous area and the short reasons.*
@@ -65,7 +65,7 @@ of the image met the rules. It is **not** the probability that the image was edi
 
 | Histogram and regions | Forensic views |
 | --- | --- |
-| ![Click a region to see its histogram](docs/gifs/histogram-and-regions.gif) | ![Heatmap, noise, edges, copy-move and opacity](docs/gifs/forensic-views.gif) |
+| ![Click a region to see its histogram](assets/gifs/histogram-and-regions.gif) | ![Heatmap, noise, edges, copy-move and opacity](assets/gifs/forensic-views.gif) |
 | The whole-image histogram, then one region's histogram and its short summary, then back. | Regional heatmap, noise, Sobel edge map and copy-move candidates, with the opacity slider. |
 
 All three GIFs are recordings of the real window (real mouse movement and clicks) on the
@@ -138,10 +138,13 @@ CSC360-Group2/
 ├── javatest/imageproof/   Java tests (plain programs; AllTests runs them)
 ├── tools/imageproof/      helpers: sample generator, benchmark, gallery, GIF recorder
 ├── samples/               synthetic demonstration images made by the group
-├── docs/                  architecture, evaluation, report, manual test, Javadoc guide
+│   └── gallery/           the 11 colour test images used in the report
+├── assets/                pictures used by the documents
 │   ├── images/            screenshots and diagrams
 │   ├── gifs/              the animated demos
-│   └── report/            evidence for the final report
+│   └── report/            real-window screenshots for the final report
+├── docs/                  documents only (Markdown and CSV)
+│   └── report/            report evidence: benchmark tables, gallery results, test log
 ├── pom.xml                Maven build
 └── launcher.bat / .sh     one-step build and start
 ```
@@ -181,7 +184,6 @@ The tool was evaluated on synthetic images ([docs/EVALUATION.md](docs/EVALUATION
 * [Java API documentation (Javadoc) guide](docs/JAVADOC.md)
 * [Architecture](docs/ARCHITECTURE.md)
 * [Evaluation and known limitations](docs/EVALUATION.md) and the [final report](docs/REPORT.md)
-* [Demo and presentation guide](docs/DEMO.md)
 * [Manual test guide](docs/MANUAL_TEST.md)
 * [Java concepts used](docs/JAVA_CONCEPTS.md)
 * [Project plan and decisions](docs/PROJECT_PLAN.md)

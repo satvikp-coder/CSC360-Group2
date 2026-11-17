@@ -34,6 +34,7 @@ import javax.swing.SwingUtilities;
  * Nothing here is a runtime dependency of the application.
  *
  * <p>Run: {@code java -cp target/classes;target/test-classes imageproof.DemoGifs <sampleFolder> <outputFolder>}
+ * (the GIFs in the README are written to {@code assets/gifs})
  * where the sample folder holds copies of the samples in a neutral path (it is shown in the file chooser).
  */
 public class DemoGifs {

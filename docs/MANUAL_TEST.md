@@ -28,9 +28,9 @@ Windows 11, real desktop, driven by a scratch harness using `java.awt.Robot`
 (screen capture, one real mouse click) on the exact code of this commit.
 Compiled with `--release 17` on JDK 24.0.2 (no JDK 17 was installed locally; CI
 runs Temurin 17 on Ubuntu and Windows). Screenshots were inspected by eye:
-[selected region](images/desktop-selected-region.png),
-[minimum size 920 x 700](images/desktop-min-size.png),
-[advanced details](images/desktop-advanced.png).
+[selected region](../assets/images/desktop-selected-region.png),
+[minimum size 920 x 700](../assets/images/desktop-min-size.png),
+[advanced details](../assets/images/desktop-advanced.png).
 
 | Check | Result |
 |---|---|
@@ -60,10 +60,10 @@ border by hand (sizes were set programmatically).
 
 Before this change: 10 test programs, 133 assessment checks, 17 desktop checks,
 Java 17 Maven build, and Windows screenshots of the earlier exact-copy-only
-assessment ([original](images/assessment-original-windows.png),
-[copy](images/assessment-copy-windows.png),
-[repeated](images/assessment-repeated-windows.png),
-[inserted](images/assessment-inserted-windows.png)). Those images show the
+assessment ([original](../assets/images/assessment-original-windows.png),
+[copy](../assets/images/assessment-copy-windows.png),
+[repeated](../assets/images/assessment-repeated-windows.png),
+[inserted](../assets/images/assessment-inserted-windows.png)). Those images show the
 superseded layout with the long numeric text.
 
 ## Step-by-step (old and still valid)
