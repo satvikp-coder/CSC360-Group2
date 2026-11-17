@@ -84,8 +84,20 @@ java -jar target/simple-image-proof-0.1.0.jar
 
 ## How it works
 
-```text
-Open image → gray image → tiles (64 x 64) → measurements → result
+The program reads the image, runs the checks, and the window shows the result.
+
+```mermaid
+flowchart LR
+    A[Image file] --> B[LoadedImage]
+    B --> C[Analysis]
+    C --> D[Histogram and Regions]
+    C --> E[Noise and Edges]
+    C --> F[CopyMove and FlatPatch]
+    D --> G[LocalAnomaly]
+    E --> G
+    G --> H[TamperingAssessment]
+    F --> H
+    H --> I[App window]
 ```
 
 | Check | What it looks for |
@@ -154,8 +166,6 @@ the tests on Java 17 for every push.
 | 2 | Satvik | AU2520039 |
 | 3 | Garv | AU2520247 |
 | 4 | Shambhavee | AU2500016 |
-
-Topic assigned by Dhruvee Sheth. Ahmedabad University.
 
 ## More documents
 
