@@ -27,7 +27,7 @@ Simple-Image-Proof: a small teaching program that measures one PNG or JPEG image
 ## Generating the documentation
 
 ```bash
-javadoc -encoding UTF-8 -charset UTF-8 --release 17 -Xdoclint:all,-missing -notimestamp -windowtitle "Simple-Image-Proof API" -doctitle "Simple-Image-Proof API" -d docs/api -sourcepath src -subpackages imageproof
+javadoc -encoding UTF-8 -charset UTF-8 --release 17 -Xdoclint:all -Werror -notimestamp -windowtitle "Simple-Image-Proof API" -doctitle "Simple-Image-Proof API" -d docs/api -sourcepath src -subpackages imageproof
 ```
 
 `javadoc` is in the JDK's `bin` folder.

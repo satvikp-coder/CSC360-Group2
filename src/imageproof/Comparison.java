@@ -13,6 +13,9 @@ package imageproof;
  */
 public class Comparison {
 
+    /** Creates an instance; histogram comparison is provided by the static method. */
+    public Comparison() {}
+
     /** How far the sum of a histogram may be from 1 (allows rounding error). */
     public static final double TOLERANCE = 1e-9;
 

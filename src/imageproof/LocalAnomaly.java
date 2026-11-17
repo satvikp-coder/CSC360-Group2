@@ -32,6 +32,9 @@ import java.util.Arrays;
  */
 public class LocalAnomaly {
 
+    /** Creates an empty result; use {@link #analyze(Analysis)} to measure an image. */
+    public LocalAnomaly() {}
+
     /** Modified z-score cut-off (3.5). */
     public static final double Z_LIMIT = 3.5;
     /** Smallest neighbour TVD (0.10) that can count; tiny absolute differences are ignored. */

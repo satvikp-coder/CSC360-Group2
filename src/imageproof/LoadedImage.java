@@ -17,6 +17,9 @@ import javax.imageio.stream.ImageInputStream;
  */
 public class LoadedImage {
 
+    /** Creates an empty result; use {@link #load(java.io.File)} to read an image. */
+    public LoadedImage() {}
+
     /** The file that was read. */
     public File file;
     /** The decoded pixels. */

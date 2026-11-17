@@ -21,6 +21,9 @@ import java.awt.image.Raster;
  */
 public class Histogram {
 
+    /** Creates an instance; histogram operations are provided by static methods. */
+    public Histogram() {}
+
     /** Number of histogram bins: one for each gray value 0 to 255. */
     public static final int BINS = 256;
 
