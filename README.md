@@ -9,8 +9,6 @@
   <img alt="Java Swing" src="https://img.shields.io/badge/UI-Swing-2b6cb0?style=flat-square">
   <img alt="Maven" src="https://img.shields.io/badge/build-Maven-c71a36?style=flat-square">
   <img alt="CI" src="https://img.shields.io/github/actions/workflow/status/satvikp-coder/CSC360-Group2/ci.yml?branch=main&style=flat-square&label=CI">
-  <img alt="No machine learning" src="https://img.shields.io/badge/ML-none-444?style=flat-square">
-  <img alt="No external libraries" src="https://img.shields.io/badge/libraries-none-444?style=flat-square">
 </p>
 
 <p align="center">
