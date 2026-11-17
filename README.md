@@ -56,7 +56,7 @@ Upload image
 
 Everything is calculated from the single image you opened. The details and formulas
 are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and in the
-[Java API documentation](docs/JAVADOC.md).
+[API reference](docs/JAVADOC.md).
 
 **Anomalous area = 100 x flagged pixel area / analyzed pixel area.** It says how much
 of the image met the rules. It is **not** the probability that the image was edited.
@@ -143,8 +143,9 @@ CSC360-Group2/
 │   ├── images/            screenshots and diagrams
 │   ├── gifs/              the animated demos
 │   └── report/            real-window screenshots for the final report
-├── docs/                  documents only (Markdown and CSV)
-│   └── report/            report evidence: benchmark tables, gallery results, test log
+├── docs/                  documents (Markdown and CSV)
+│   ├── api/               Javadoc API reference (open index.html)
+│   └── report/            final report, benchmark tables, gallery results, test log
 ├── pom.xml                Maven build
 └── launcher.bat / .sh     one-step build and start
 ```
@@ -181,7 +182,7 @@ The tool was evaluated on synthetic images ([docs/EVALUATION.md](docs/EVALUATION
 
 ## Documentation
 
-* [Java API documentation (Javadoc) guide](docs/JAVADOC.md)
+* [API reference (Javadoc)](docs/JAVADOC.md)
 * [Architecture](docs/ARCHITECTURE.md)
 * [Evaluation and known limitations](docs/EVALUATION.md) and the [final report](docs/report/REPORT.md)
 * [Manual test guide](docs/MANUAL_TEST.md)

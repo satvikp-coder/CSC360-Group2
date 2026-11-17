@@ -1,58 +1,33 @@
-# Java API documentation (Javadoc)
+# API Reference
 
-## What is Javadoc?
+Package `imageproof` (Java 17). The complete reference is the Javadoc in
+[`docs/api/`](api/index.html); open `docs/api/index.html` in a web browser.
 
-Javadoc is the Java tool that turns the `/** ... */` comments in the source code
-into a set of web pages. Each class gets a page that explains what it is for, and
-each method lists what it does, what its inputs (`@param`) mean, what it returns
-(`@return`) and when it can fail (`@throws`).
+Simple-Image-Proof: a small teaching program that measures one PNG or JPEG image and points out areas that may be worth a closer look.
 
-In this project the comments are written in simple English and explain the real
-maths: grayscale conversion, the 256-bin histogram, total variation distance,
-tiles, the noise residual, Sobel edges, copy-move matching, the local anomaly
-rule and how the anomalous-area percentage is calculated.
+## Classes
 
-## Generate the pages
+| Class | Summary |
+| --- | --- |
+| [`Analysis`](api/imageproof/Analysis.html) | All measurements for one image, collected in one place. |
+| [`App`](api/imageproof/App.html) | Main window of the program. |
+| [`Comparison`](api/imageproof/Comparison.html) | Total variation distance (TVD) between two normalized histograms. |
+| [`CopyMove`](api/imageproof/CopyMove.html) | Looks for copy-move candidates: two 16 x 16 blocks with exactly the same gray values. |
+| [`Edges`](api/imageproof/Edges.html) | Sobel edge diagnostic. |
+| [`FlatPatch`](api/imageproof/FlatPatch.html) | Finds solid-colour patches (like a Paint fill) in an otherwise noisy image. |
+| [`Histogram`](api/imageproof/Histogram.html) | Turns an image into gray values (0 to 255) and a 256-bin histogram. |
+| [`HistogramPanel`](api/imageproof/HistogramPanel.html) | Swing panel that draws a normalized 256-bin histogram as bars. |
+| [`ImagePanel`](api/imageproof/ImagePanel.html) | Swing panel that shows an image scaled to fit, keeping its shape (empty bars at the sides). |
+| [`LoadedImage`](api/imageproof/LoadedImage.html) | One image file read from disk: the pixels plus its real format (PNG or JPEG). |
+| [`LocalAnomaly`](api/imageproof/LocalAnomaly.html) | Local anomaly rule for ONE image. |
+| [`Noise`](api/imageproof/Noise.html) | Noise diagnostic. |
+| [`Regions`](api/imageproof/Regions.html) | Splits the image into square tiles (64 x 64 pixels by default) and measures each tile. |
+| [`TamperingAssessment`](api/imageproof/TamperingAssessment.html) | Final assessment of ONE image. |
 
-Run this in the project folder. `javadoc` is part of the JDK (it lives in the
-JDK's `bin` folder next to `java` and `javac`; if your terminal does not find it,
-use the full path, for example `"C:\Program Files\Java\jdk-17\bin\javadoc"`).
+## Generating the documentation
 
 ```bash
-javadoc -encoding UTF-8 -charset UTF-8 -Xdoclint:all,-missing -d target/site/apidocs -sourcepath src -subpackages imageproof
+javadoc -encoding UTF-8 -charset UTF-8 --release 17 -Xdoclint:all,-missing -notimestamp -windowtitle "Simple-Image-Proof API" -doctitle "Simple-Image-Proof API" -d docs/api -sourcepath src -subpackages imageproof
 ```
 
-* `-sourcepath src -subpackages imageproof` reads the application code in `src/`.
-* `-d target/site/apidocs` is where the pages are written.
-* `-Xdoclint:all,-missing` checks all comment tags and links. It only leaves out
-  the note "default constructor has no comment" for the small utility classes.
-
-The command ends with no errors and no warnings. The generated pages are build
-output: they live under `target/`, which Git ignores, so they are **not** committed.
-
-## Open the pages
-
-Open this file in a web browser:
-
-```text
-target/site/apidocs/index.html
-```
-
-For example, on Windows run `start target\site\apidocs\index.html`.
-
-## How to read a class page
-
-1. **Package overview** (`index.html`): the flow of the program and one line per class.
-2. **Class page**, for example `Histogram.html`: the first paragraph says what the class is for.
-3. **Field Summary** lists constants such as the tile size or thresholds.
-4. **Method Summary** lists every method with a one-line description. Click a name for the full description with its `Parameters`, `Returns` and `Throws` sections.
-5. **Constructor Detail** and **Method Detail** show the exact signature.
-
-A good place to start is `TamperingAssessment`: it explains the three outcomes and
-that the anomalous-area percentage is a **measured area**, not a probability that an
-image was forged.
-
-## Notes
-
-* Javadoc pages are not published to GitHub Pages. Generate them locally.
-* Only the application code in `src/` is documented. The tests (`javatest/`) and tools (`tools/`) are ordinary programs.
+`javadoc` is in the JDK's `bin` folder.
